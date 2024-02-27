@@ -3,6 +3,7 @@ package com.reactnativecommunity.webview;
 import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -208,7 +209,18 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
             requestPermissions(Collections.singletonList(Manifest.permission.ACCESS_FINE_LOCATION));
 
         } else {
-            callback.invoke(origin, true, false);
+            String alertMessage = String.format("Allow this app to use your location?");
+            AlertDialog.Builder builder = new AlertDialog.Builder(this.mWebView.getContext());
+            builder.setMessage(alertMessage);
+            builder.setCancelable(false);
+            builder.setPositiveButton("Allow", (dialog, which) -> {
+                callback.invoke(origin, true, false);
+            });
+            builder.setNegativeButton("Don't allow", (dialog, which) -> {
+                callback.invoke(origin, false, false);
+            });
+            AlertDialog alertDialog = builder.create();
+            alertDialog.show();
         }
     }
 
