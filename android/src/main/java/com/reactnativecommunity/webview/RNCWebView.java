@@ -113,27 +113,22 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-        InputConnection inputConnection = new BaseInputConnection(this, false);
+        InputConnection inputConnection;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            outAttrs.imeOptions = IME_FLAG_NO_PERSONALIZED_LEARNING;
-            if (IS_SAMSUNG_DEVICE) {
-                inputConnection = super.onCreateInputConnection(outAttrs);
+        if (IS_SAMSUNG_DEVICE) {
+            inputConnection = super.onCreateInputConnection(outAttrs);
+        } else {
+            inputConnection = new BaseInputConnection(this, false);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
             } else {
                 // Cover OS versions below Oreo
                 outAttrs.imeOptions = IME_FLAG_NO_PERSONALIZED_LEARNING;
-                inputConnection = new BaseInputConnection(this, false);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    outAttrs.imeOptions = IME_FLAG_NO_PERSONALIZED_LEARNING;
-                } else {
-                    // Cover OS versions below Oreo
-                    outAttrs.imeOptions = IME_FLAG_NO_PERSONALIZED_LEARNING;
-                }
             }
         }
         return inputConnection;
     }
-
 
     @Override
     public void onHostResume() {
