@@ -151,9 +151,6 @@ class RNCWebViewManagerImpl {
                 val alertDialog = builder.create()
                 alertDialog.show()
             }
-            builder.setNegativeButton("Cancel") { _: DialogInterface?, _: Int -> }
-            val alertDialog = builder.create()
-            alertDialog.show()
         })
         return RNCWebViewWrapper(context, webView)
     }
