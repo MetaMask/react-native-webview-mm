@@ -76,8 +76,8 @@ public class RNCWebViewClient extends WebViewClient {
     }
 
     @Override
-    public void onPageStarted(WebView webView, String url, Bitmap favicon) {
-      super.onPageStarted(webView, url, favicon);
+    public void onPageCommitVisible(WebView webView, String url) {
+      super.onPageCommitVisible(webView, url);
       mLastLoadFailed = false;
 
       RNCWebView reactWebView = (RNCWebView) webView;
