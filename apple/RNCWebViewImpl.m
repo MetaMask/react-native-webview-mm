@@ -74,7 +74,7 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
       @"toggleUnderline:":   @"underline",
       @"_share:":            @"share",
   };
-    
+
   return map[sel] ?: sel;
 }
 
@@ -86,7 +86,7 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
           return NO;
       }
   }
-  
+
   if (!self.menuItems) {
       return [super canPerformAction:action withSender:sender];
   }
@@ -1112,17 +1112,17 @@ RCTAutoInsetsProtocol>
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
 #if !TARGET_OS_OSX
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-      completionHandler();
-    }]];
-    [[self topViewController] presentViewController:alert animated:YES completion:NULL];
+  UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
+  [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+    completionHandler();
+  }]];
+  [[self topViewController] presentViewController:alert animated:YES completion:NULL];
 #else
-    NSAlert *alert = [[NSAlert alloc] init];
-    [alert setMessageText:message];
-    [alert beginSheetModalForWindow:[NSApp keyWindow] completionHandler:^(__unused NSModalResponse response){
-      completionHandler();
-    }];
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText:message];
+  [alert beginSheetModalForWindow:[NSApp keyWindow] completionHandler:^(__unused NSModalResponse response){
+    completionHandler();
+  }];
 #endif // !TARGET_OS_OSX
 }
 
