@@ -8,6 +8,7 @@ buildscript {
     }
 
     dependencies {
+        classpath("com.android.tools.build:gradle:8.3.0")
         getReactNativeDependencies().each { dependency ->
             classpath(dependency)
         }
