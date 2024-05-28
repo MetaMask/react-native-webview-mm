@@ -12,6 +12,7 @@ buildscript {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${safeExtGet('kotlinVersion')}")
         classpath("com.android.tools.build:gradle:7.0.4")
     }
+    ext.kotlinVersion = "${safeExtGet('kotlinVersion')}"
 }
 
 def getExtOrIntegerDefault(prop) {
