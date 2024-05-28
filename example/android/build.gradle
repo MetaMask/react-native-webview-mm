@@ -8,14 +8,11 @@ buildscript {
     }
 
     dependencies {
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
         classpath("com.android.tools.build:gradle:8.3.0")
         getReactNativeDependencies().each { dependency ->
             classpath(dependency)
         }
     }
-}
-buildscript {
-  ext {
-    kotlinVersion = "1.9.0"
-  }
+    ext.kotlinVersion = "1.9.0"
 }
