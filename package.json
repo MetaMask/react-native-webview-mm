@@ -90,11 +90,6 @@
     "react-native-webview-mm.podspec",
     "react-native.config.js"
   ],
-  "resolutions": {
-    "@react-native-community/cli": "10.2.4",
-    "@react-native-community/cli-platform-android": "10.2.0",
-    "@react-native-community/cli-platform-ios": "10.2.4"
-  },
   "codegenConfig": {
     "name": "RNCWebViewSpec",
     "type": "all",
