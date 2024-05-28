@@ -2119,10 +2119,10 @@
     invariant "^2.2.4"
     nullthrows "^1.1.1"
 
-"@rnx-kit/react-native-host@^0.2.9":
-  version "0.2.9"
-  resolved "https://registry.yarnpkg.com/@rnx-kit/react-native-host/-/react-native-host-0.2.9.tgz#ee9fd61254dbca75383b5fcdf9c8bb1f630b0985"
-  integrity sha512-iQWmisL5/UCp+U3vD1GqGThvBcTsgOpa/6p6IHKpywTfOLTNkdZiCDCHwHBekw3amedhGPdxCP7lmEbuVF8Udw==
+"@rnx-kit/react-native-host@^0.4.9":
+  version "0.4.9"
+  resolved "https://registry.yarnpkg.com/@rnx-kit/react-native-host/-/react-native-host-0.4.9.tgz#1443649f9b96dc53e1f7ea10387c4abd260122b3"
+  integrity sha512-S8cp6sOLDsrW5bYk6LEoxU90UEms/eC2J2inF4UJ2p/AT2ibzU9ftO+oSAfoRQIizpAqAf823fuAsSXdfdQA5w==
 
 "@semantic-release/commit-analyzer@^9.0.2":
   version "9.0.2"
@@ -7709,7 +7709,7 @@ minimist-options@4.1.0:
     is-plain-obj "^1.1.0"
     kind-of "^6.0.3"
 
-minimist@^1.2.0, minimist@^1.2.5, minimist@^1.2.8:
+minimist@^1.2.0, minimist@^1.2.5:
   version "1.2.8"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.8.tgz#c1a464e7693302e082a075cee0c057741ac4772c"
   integrity sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==
@@ -9014,20 +9014,18 @@ react-native-macos@~0.72.21:
     ws "^6.2.2"
     yargs "^17.6.2"
 
-react-native-test-app@^2.5.35:
-  version "2.5.35"
-  resolved "https://registry.yarnpkg.com/react-native-test-app/-/react-native-test-app-2.5.35.tgz#11bf4cb46faa8df5f3e28a5ef9578c3cfbbf4d53"
-  integrity sha512-B3Y0aE5wM+tGJbJRTk/CnxZvZKtn8XlNHB5i5Z8DjF4E+IHzUStDtK3yaak1wCDHYjJkh11Lm9VdmAGcko7Xgg==
+react-native-test-app@^3.7.3:
+  version "3.7.3"
+  resolved "https://registry.yarnpkg.com/react-native-test-app/-/react-native-test-app-3.7.3.tgz#1631d942260f3c1cd519024ec3ee227d738dc414"
+  integrity sha512-w6iJRpdaWNn0v10n6Nkjngmg9G2/2HA6E8NJs+cG087xd1w5JSUODvL5tT2U25cnMuyePCeqy/i7fv6quOqDIw==
   dependencies:
-    "@rnx-kit/react-native-host" "^0.2.9"
+    "@rnx-kit/react-native-host" "^0.4.9"
     ajv "^8.0.0"
-    chalk "^4.1.0"
     cliui "^8.0.0"
     fast-xml-parser "^4.0.0"
-    minimist "^1.2.8"
     prompts "^2.4.0"
     semver "^7.3.5"
-    uuid "^8.3.2"
+    uuid "^9.0.0"
 
 react-native-windows@~0.72.32:
   version "0.72.33"
@@ -10674,7 +10672,7 @@ utils-merge@1.0.1:
   resolved "https://registry.yarnpkg.com/utils-merge/-/utils-merge-1.0.1.tgz#9f95710f50a267947b2ccc124741c1028427e713"
   integrity sha1-n5VxD1CiZ5R7LMwSR0HBAoQn5xM=
 
-uuid@9.0.1:
+uuid@9.0.1, uuid@^9.0.0:
   version "9.0.1"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-9.0.1.tgz#e188d4c8853cc722220392c424cd637f32293f30"
   integrity sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==
@@ -10684,7 +10682,7 @@ uuid@^3.3.2:
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.4.0.tgz#b23e4358afa8a202fe7a100af1f5f883f02007ee"
   integrity sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==
 
-uuid@^8.3.0, uuid@^8.3.2:
+uuid@^8.3.0:
   version "8.3.2"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-8.3.2.tgz#80d5b5ced271bb9af6c445f21a1a04c606cefbe2"
   integrity sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==
