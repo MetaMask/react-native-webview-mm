@@ -4,7 +4,8 @@ workspace 'WebviewExample.xcworkspace'
 
 options = {
   :bridgeless_enabled => false,
-  :fabric_enabled => true,
+  # todo: read config from ci
+  :fabric_enabled => false,
   :hermes_enabled => false,
 }
 
