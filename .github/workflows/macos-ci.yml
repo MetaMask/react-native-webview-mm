@@ -25,6 +25,6 @@ jobs:
         working-directory: example/macos
       - name: Build macOS test app
         run: |
-          xcodebuild -workspace WebviewExample.xcworkspace -scheme ReactTestApp CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO build
+          xcodebuild -workspace WebviewExample.xcworkspace -scheme WebviewExample CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO build
         working-directory: example/macos
     timeout-minutes: 60
