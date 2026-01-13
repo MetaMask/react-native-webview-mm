@@ -973,11 +973,20 @@ RCTAutoInsetsProtocol>
 }
 
 - (void)downloadBase64File:(NSString *)base64String {
+    // Infer file extension from the data: URL before doing any heavy work.
+    // For generic application/octet-stream payloads we suppress the download
+    // entirely (no "Do you want to download File.bin?" alert), since these
+    // are typically iframe-driven noise rather than user‑initiated downloads.
+    NSString *fileExtension = [self fileExtensionFromBase64String:base64String];
+    if ([[fileExtension lowercaseString] isEqualToString:@"bin"]) {
+        NSLog(@"RNCWebViewImpl: Ignoring generic binary download (File.bin) from data: URL");
+        return;
+    }
+
     NSArray *components = [base64String componentsSeparatedByString:@","];
     NSString *base64ContentPart = components.lastObject;
 
     NSData *fileData = [[NSData alloc] initWithBase64EncodedString:base64ContentPart options:NSDataBase64DecodingIgnoreUnknownCharacters];
-    NSString *fileExtension = [self fileExtensionFromBase64String:base64String];
     [self showDownloadAlert:fileExtension invokeDownload:^{
     	NSString *tempFilePath = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"File.%@", fileExtension]];
         [fileData writeToFile:tempFilePath atomically:YES];
