@@ -1260,7 +1260,7 @@ RCTAutoInsetsProtocol>
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
 #if !TARGET_OS_OSX
-  UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
+  UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Website %@ says:", frame.securityOrigin.host] message:message preferredStyle:UIAlertControllerStyleAlert];
   [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
     completionHandler();
   }]];
@@ -1279,7 +1279,7 @@ RCTAutoInsetsProtocol>
  */
 - (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL))completionHandler{
 #if !TARGET_OS_OSX
-  UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
+  UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Website %@ says:", frame.securityOrigin.host] message:message preferredStyle:UIAlertControllerStyleAlert];
   [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
     completionHandler(YES);
   }]];
@@ -1305,7 +1305,7 @@ RCTAutoInsetsProtocol>
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString *))completionHandler{
   if (!_disablePromptDuringLoading) {
 #if !TARGET_OS_OSX
-  UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:prompt preferredStyle:UIAlertControllerStyleAlert];
+  UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Website %@ says:", frame.securityOrigin.host] message:prompt preferredStyle:UIAlertControllerStyleAlert];
   [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
     textField.text = defaultText;
   }];
