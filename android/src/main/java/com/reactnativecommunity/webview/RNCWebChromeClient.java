@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.ConsoleMessage;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JsResult;
 import android.webkit.JsPromptResult;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -62,6 +63,7 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
 
     // This boolean block JS prompts and alerts from displaying during loading
     protected boolean blockJsDuringLoading = true;
+    protected boolean suppressJavaScriptDialogs = false;
 
     /*
      * - Permissions -
@@ -445,12 +447,30 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
 
     @Override
     public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsPromptResult result) {
-        if (blockJsDuringLoading) {
+        if (shouldSuppressDialogs()) {
             result.cancel();
             return true;
         } else {
             return super.onJsPrompt(view, url, message, defaultValue, result);
         }
+    }
+
+    @Override
+    public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+        if (shouldSuppressDialogs()) {
+            result.cancel();
+            return true;
+        }
+        return super.onJsAlert(view, url, message, result);
+    }
+
+    @Override
+    public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+        if (shouldSuppressDialogs()) {
+            result.cancel();
+            return true;
+        }
+        return super.onJsConfirm(view, url, message, result);
     }
 
     @Override
@@ -485,5 +505,13 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
 
     public void setHasOnOpenWindowEvent(boolean hasEvent) {
       mHasOnOpenWindowEvent = hasEvent;
+    }
+
+    public void setSuppressJavaScriptDialogs(boolean suppress) {
+      suppressJavaScriptDialogs = suppress;
+    }
+
+    private boolean shouldSuppressDialogs() {
+      return suppressJavaScriptDialogs || blockJsDuringLoading;
     }
 }
