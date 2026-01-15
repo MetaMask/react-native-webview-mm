@@ -48,9 +48,7 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
     private var mAllowsProtectedMedia = false
     private var mDownloadingMessage: String? = null
     private var mLackPermissionToDownloadMessage: String? = null
-    private var mAllowFileDownloads = true
     private var mHasOnOpenWindowEvent = false
-    private var mSuppressJavaScriptDialogs = false
     private var mPendingSource: ReadableMap? = null
 
     private var mUserAgent: String? = null
@@ -104,7 +102,7 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
             webView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
         }
 		    val base64DownloaderRequestFilePermission = { base64: String ->
-			    	if (mAllowFileDownloads) {
+			    	if (webView.allowFileDownloads) {
 			    	    webView.reactApplicationContext.getNativeModule(RNCWebViewModule::class.java)?.let { module ->
 				    		    module.setBase64DownloadRequest(base64)
 				    		    module.grantFileDownloaderPermissions(getDownloadingMessageOrDefault(), getLackPermissionToDownloadMessageOrDefault())
@@ -117,7 +115,7 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
 			      requestFilePermission = base64DownloaderRequestFilePermission,
 		    )
 		    webView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
-			      if (!mAllowFileDownloads) {
+			      if (!webView.allowFileDownloads) {
 			      	  return@DownloadListener
 			      }
 			      if (url.startsWith("data:")) {
@@ -262,7 +260,7 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
                 }
             webChromeClient.setAllowsProtectedMedia(mAllowsProtectedMedia);
             webChromeClient.setHasOnOpenWindowEvent(mHasOnOpenWindowEvent);
-            webChromeClient.setSuppressJavaScriptDialogs(mSuppressJavaScriptDialogs);
+            webChromeClient.setSuppressJavaScriptDialogs(webView.suppressJavaScriptDialogs);
             webView.webChromeClient = webChromeClient
         } else {
             var webChromeClient = webView.webChromeClient as RNCWebChromeClient?
@@ -274,7 +272,7 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
             }
             webChromeClient.setAllowsProtectedMedia(mAllowsProtectedMedia);
             webChromeClient.setHasOnOpenWindowEvent(mHasOnOpenWindowEvent);
-            webChromeClient.setSuppressJavaScriptDialogs(mSuppressJavaScriptDialogs);
+            webChromeClient.setSuppressJavaScriptDialogs(webView.suppressJavaScriptDialogs);
             webView.webChromeClient = webChromeClient
         }
     }
@@ -683,7 +681,8 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
     }
 
     fun setAllowFileDownloads(viewWrapper: RNCWebViewWrapper, value: Boolean) {
-        mAllowFileDownloads = value
+        val view = viewWrapper.webView
+        view.allowFileDownloads = value
     }
 
     fun setHasOnOpenWindowEvent(viewWrapper: RNCWebViewWrapper, value: Boolean) {
@@ -713,7 +712,7 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
 
     fun setSuppressJavaScriptDialogs(viewWrapper: RNCWebViewWrapper, suppress: Boolean) {
         val view = viewWrapper.webView
-        mSuppressJavaScriptDialogs = suppress
+        view.suppressJavaScriptDialogs = suppress
         val client = view.webChromeClient
         if (client is RNCWebChromeClient) {
             client.setSuppressJavaScriptDialogs(suppress)
