@@ -38,6 +38,7 @@ This document lays out the current public properties and methods for the React N
 - [`domStorageEnabled`](Reference.md#domstorageenabled)
 - [`javaScriptEnabled`](Reference.md#javascriptenabled)
 - [`javaScriptCanOpenWindowsAutomatically`](Reference.md#javascriptcanopenwindowsautomatically)
+- [`suppressJavaScriptDialogs`](Reference.md#suppressjavascriptdialogs)
 - [`androidLayerType`](Reference.md#androidLayerType)
 - [`mixedContentMode`](Reference.md#mixedcontentmode)
 - [`thirdPartyCookiesEnabled`](Reference.md#thirdpartycookiesenabled)
@@ -91,6 +92,7 @@ This document lays out the current public properties and methods for the React N
 - [`minimumFontSize`](Reference.md#minimumFontSize)
 - [`downloadingMessage`](Reference.md#downloadingMessage)
 - [`lackPermissionToDownloadMessage`](Reference.md#lackPermissionToDownloadMessage)
+- [`allowFileDownloads`](Reference.md#allowfiledownloads)
 - [`allowsProtectedMedia`](Reference.md#allowsProtectedMedia)
 - [`webviewDebuggingEnabled`](Reference.md#webviewDebuggingEnabled)
 - [`paymentRequestEnabled`](Reference.md#paymentRequestEnabled)
@@ -926,6 +928,16 @@ A Boolean value indicating whether JavaScript can open windows without user inte
 
 ---
 
+### `suppressJavaScriptDialogs`[⬆](#props-index)
+
+Boolean value to suppress JavaScript dialogs (alert/confirm/prompt). The default value is `false`.
+
+| Type | Required | Platform |
+| ---- | -------- | -------- |
+| bool | No       | Android, iOS |
+
+---
+
 ### `androidLayerType`[⬆](#props-index)
 
 Specifies the layer type.
@@ -1692,6 +1704,14 @@ This is the message that is shown in the Toast when the webview is unable to dow
 | Type   | Required | Platform |
 | ------ | -------- | -------- |
 | string | No       | Android  |
+
+### `allowFileDownloads`[⬆](#props-index)
+
+Boolean value to control whether file downloads are allowed. The default value is `true`.
+
+| Type | Required | Platform |
+| ---- | -------- | -------- |
+| bool | No       | Android  |
 
 ### `allowsProtectedMedia`[⬆](#props-index)
 

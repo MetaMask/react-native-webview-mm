@@ -160,6 +160,7 @@ export interface NativeProps extends ViewProps {
   forceDarkOn?: boolean;
   geolocationEnabled?: boolean;
   lackPermissionToDownloadMessage?: string;
+  allowFileDownloads?: boolean;
   messagingModuleName: string;
   minimumFontSize?: Int32;
   mixedContentMode?: WithDefault<'never' | 'always' | 'compatibility', 'never'>;
@@ -265,6 +266,7 @@ export interface NativeProps extends ViewProps {
     true
   >;
   javaScriptCanOpenWindowsAutomatically?: boolean;
+  suppressJavaScriptDialogs?: boolean;
   javaScriptEnabled?: WithDefault<boolean, true>;
   webviewDebuggingEnabled?: boolean;
   mediaPlaybackRequiresUserAction?: WithDefault<boolean, true>;

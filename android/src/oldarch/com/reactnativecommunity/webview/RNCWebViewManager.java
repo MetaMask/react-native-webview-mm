@@ -168,9 +168,19 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
         mRNCWebViewManagerImpl.setLackPermissionToDownloadMessage(value);
     }
 
+    @ReactProp(name = "allowFileDownloads", defaultBoolean = true)
+    public void setAllowFileDownloads(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setAllowFileDownloads(view, value);
+    }
+
     @ReactProp(name = "hasOnOpenWindowEvent")
     public void setHasOnOpenWindowEvent(RNCWebViewWrapper view, boolean hasEvent) {
         mRNCWebViewManagerImpl.setHasOnOpenWindowEvent(view, hasEvent);
+    }
+
+    @ReactProp(name = "suppressJavaScriptDialogs")
+    public void setSuppressJavaScriptDialogs(RNCWebViewWrapper view, boolean suppress) {
+        mRNCWebViewManagerImpl.setSuppressJavaScriptDialogs(view, suppress);
     }
 
     @ReactProp(name = "mediaPlaybackRequiresUserAction")

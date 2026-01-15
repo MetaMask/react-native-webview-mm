@@ -1,6 +1,5 @@
 package com.reactnativecommunity.webview.extension.file
 
-import android.content.Context
 import android.webkit.JavascriptInterface
 import com.reactnativecommunity.webview.RNCWebView
 import com.reactnativecommunity.webview.extension.file.Base64FileDownloader.downloadBase64File
@@ -8,13 +7,13 @@ import java.io.IOException
 
 internal fun RNCWebView.addBlobFileDownloaderJavascriptInterface(downloadingMessage: String, requestFilePermission: (String) -> Unit) {
 	this.addJavascriptInterface(
-		BlobFileDownloader(this.context, downloadingMessage, requestFilePermission),
+		BlobFileDownloader(this, downloadingMessage, requestFilePermission),
 		BlobFileDownloader.JS_INTERFACE_TAG,
 	)
 }
 
 internal class BlobFileDownloader(
-	private val context: Context,
+	private val webView: RNCWebView,
 	private val downloadingMessage: String,
 	private val requestFilePermission: (String) -> Unit,
 ) {
@@ -22,7 +21,10 @@ internal class BlobFileDownloader(
 	@JavascriptInterface
 	@Throws(IOException::class)
 	fun getBase64FromBlobData(base64: String) {
-		downloadBase64File(context, base64, downloadingMessage, requestFilePermission)
+		if (!webView.allowFileDownloads) {
+			return
+		}
+		downloadBase64File(webView.context, base64, downloadingMessage, requestFilePermission)
 	}
 
 	companion object {
