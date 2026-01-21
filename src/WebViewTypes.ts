@@ -1141,6 +1141,13 @@ export interface AndroidWebViewProps extends WebViewSharedProps {
   lackPermissionToDownloadMessage?: string;
 
   /**
+   * Boolean value to control whether file downloads are allowed.
+   * The default value is `true`.
+   * @platform android
+   */
+  allowFileDownloads?: boolean;
+
+  /**
    * Boolean value to control whether webview can play media protected by DRM.
    * Default is false.
    * @platform android
@@ -1166,6 +1173,13 @@ export interface WebViewSharedProps extends ViewProps {
    * The default value is `false`.
    */
   javaScriptCanOpenWindowsAutomatically?: boolean;
+
+  /**
+   * Boolean value to suppress JavaScript dialogs (alert/confirm/prompt).
+   * The default value is `false`.
+   * @platform android, ios
+   */
+  suppressJavaScriptDialogs?: boolean;
 
   /**
    * Stylesheet object to set the style of the container view.

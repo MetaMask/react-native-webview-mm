@@ -81,6 +81,8 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
     protected boolean hasScrollEvent = false;
     protected boolean nestedScrollEnabled = false;
     protected ProgressChangedFilter progressChangedFilter;
+    protected boolean allowFileDownloads = true;
+    protected boolean suppressJavaScriptDialogs = false;
 
     /** Samsung Manufacturer Name */
     private static final String SAMSUNG_MANUFACTURER_NAME = "samsung";
@@ -119,6 +121,22 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
 
     public void setNestedScrollEnabled(boolean nestedScrollEnabled) {
         this.nestedScrollEnabled = nestedScrollEnabled;
+    }
+
+    public void setAllowFileDownloads(boolean allow) {
+        this.allowFileDownloads = allow;
+    }
+
+    public boolean getAllowFileDownloads() {
+        return this.allowFileDownloads;
+    }
+
+    public void setSuppressJavaScriptDialogs(boolean suppress) {
+        this.suppressJavaScriptDialogs = suppress;
+    }
+
+    public boolean getSuppressJavaScriptDialogs() {
+        return this.suppressJavaScriptDialogs;
     }
 
     @Override

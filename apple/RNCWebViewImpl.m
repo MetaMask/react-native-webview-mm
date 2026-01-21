@@ -1268,6 +1268,10 @@ RCTAutoInsetsProtocol>
  */
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
+  if (_suppressJavaScriptDialogs) {
+    completionHandler();
+    return;
+  }
 #if !TARGET_OS_OSX
   UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
   [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
@@ -1287,6 +1291,10 @@ RCTAutoInsetsProtocol>
  * confirm
  */
 - (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL))completionHandler{
+  if (_suppressJavaScriptDialogs) {
+    completionHandler(NO);
+    return;
+  }
 #if !TARGET_OS_OSX
   UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
   [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
@@ -1312,6 +1320,10 @@ RCTAutoInsetsProtocol>
  * prompt
  */
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString *))completionHandler{
+  if (_suppressJavaScriptDialogs) {
+    completionHandler(nil);
+    return;
+  }
   if (!_disablePromptDuringLoading) {
 #if !TARGET_OS_OSX
   UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:prompt preferredStyle:UIAlertControllerStyleAlert];
