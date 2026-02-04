@@ -107,6 +107,9 @@ shouldStartLoadForRequest:(NSMutableDictionary<NSString *, id> *)request
 @property (nonatomic, assign) BOOL ignoreSilentHardwareSwitch;
 @property (nonatomic, copy) NSString * _Nullable allowingReadAccessToURL;
 @property (nonatomic, copy) NSDictionary * _Nullable basicAuthCredential;
+// E2E Testing: Properties for request interception (currently handled via JS injection)
+@property (nonatomic, assign) BOOL e2eMode;
+@property (nonatomic, copy) NSString * _Nullable mockServerUrl;
 @property (nonatomic, assign) BOOL pullToRefreshEnabled;
 @property (nonatomic, assign) BOOL refreshControlLightMode;
 @property (nonatomic, assign) BOOL enableApplePay;

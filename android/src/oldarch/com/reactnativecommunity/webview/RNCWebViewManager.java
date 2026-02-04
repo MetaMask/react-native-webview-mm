@@ -288,6 +288,16 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
         mRNCWebViewManagerImpl.setPaymentRequestEnabled(view, value);
     }
 
+    @ReactProp(name = "e2eMode")
+    public void setE2EMode(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setE2EMode(view, value);
+    }
+
+    @ReactProp(name = "mockServerUrl")
+    public void setMockServerUrl(RNCWebViewWrapper view, @Nullable String value) {
+        mRNCWebViewManagerImpl.setMockServerUrl(view, value);
+    }
+
     @Override
     protected void addEventEmitters(@NonNull ThemedReactContext reactContext, RNCWebViewWrapper viewWrapper) {
         // Do not register default touch emitter and let WebView implementation handle touches

@@ -611,6 +611,22 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
         view.settings.allowFileAccessFromFileURLs = value;
     }
 
+    /**
+     * E2E Testing: Enable E2E mode for request interception
+     */
+    fun setE2EMode(viewWrapper: RNCWebViewWrapper, enabled: Boolean) {
+        val view = viewWrapper.webView
+        view.setE2EMode(enabled)
+    }
+
+    /**
+     * E2E Testing: Set mock server URL for request proxying
+     */
+    fun setMockServerUrl(viewWrapper: RNCWebViewWrapper, url: String?) {
+        val view = viewWrapper.webView
+        view.setMockServerUrl(url)
+    }
+
     fun setAllowsFullscreenVideo(viewWrapper: RNCWebViewWrapper, value: Boolean) {
         val view = viewWrapper.webView
         mAllowsFullscreenVideo = value
