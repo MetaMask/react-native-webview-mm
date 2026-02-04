@@ -349,6 +349,16 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
         mRNCWebViewManagerImpl.setPaymentRequestEnabled(view, value);
     }
 
+    @ReactProp(name = "e2eMode")
+    public void setE2EMode(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setE2EMode(view, value);
+    }
+
+    @ReactProp(name = "mockServerUrl")
+    public void setMockServerUrl(RNCWebViewWrapper view, @Nullable String value) {
+        mRNCWebViewManagerImpl.setMockServerUrl(view, value);
+    }
+
     /* iOS PROPS - no implemented here */
     @Override
     public void setAllowingReadAccessToURL(RNCWebViewWrapper view, @Nullable String value) {}

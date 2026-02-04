@@ -111,6 +111,24 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
         mRNCWebViewClient.setBasicAuthCredential(credential);
     }
 
+    /**
+     * E2E Testing: Enable E2E mode for request interception
+     */
+    public void setE2EMode(boolean enabled) {
+        if (mRNCWebViewClient != null) {
+            mRNCWebViewClient.setE2EMode(enabled);
+        }
+    }
+
+    /**
+     * E2E Testing: Set mock server URL for request proxying
+     */
+    public void setMockServerUrl(@Nullable String url) {
+        if (mRNCWebViewClient != null) {
+            mRNCWebViewClient.setMockServerUrl(url);
+        }
+    }
+
     public void setSendContentSizeChangeEvents(boolean sendContentSizeChangeEvents) {
         this.sendContentSizeChangeEvents = sendContentSizeChangeEvents;
     }

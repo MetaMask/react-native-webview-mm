@@ -80,6 +80,9 @@ RCT_EXPORT_VIEW_PROPERTY(cacheEnabled, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(allowsLinkPreview, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(allowingReadAccessToURL, NSString)
 RCT_EXPORT_VIEW_PROPERTY(basicAuthCredential, NSDictionary)
+// E2E Testing: Properties for request interception (currently handled via JS injection)
+RCT_EXPORT_VIEW_PROPERTY(e2eMode, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(mockServerUrl, NSString)
 
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* __IPHONE_11_0 */
 RCT_EXPORT_VIEW_PROPERTY(contentInsetAdjustmentBehavior, UIScrollViewContentInsetAdjustmentBehavior)

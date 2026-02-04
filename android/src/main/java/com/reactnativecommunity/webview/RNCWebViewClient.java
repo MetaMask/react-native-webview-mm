@@ -34,6 +34,12 @@ import com.reactnativecommunity.webview.events.TopRenderProcessGoneEvent;
 import com.reactnativecommunity.webview.events.TopShouldStartLoadWithRequestEvent;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.Map;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -47,12 +53,25 @@ public class RNCWebViewClient extends WebViewClient {
     protected @Nullable String ignoreErrFailedForThisURL = null;
     protected @Nullable RNCBasicAuthCredential basicAuthCredential = null;
 
+    protected boolean mE2EMode = false;
+    protected @Nullable String mMockServerUrl = null;
+
     public void setIgnoreErrFailedForThisURL(@Nullable String url) {
         ignoreErrFailedForThisURL = url;
     }
 
     public void setBasicAuthCredential(@Nullable RNCBasicAuthCredential credential) {
         basicAuthCredential = credential;
+    }
+
+    public void setE2EMode(boolean enabled) {
+        mE2EMode = enabled;
+        Log.d(TAG, "[E2E] E2E mode set to: " + enabled);
+    }
+
+    public void setMockServerUrl(@Nullable String url) {
+        mMockServerUrl = url;
+        Log.d(TAG, "[E2E] Mock server URL set to: " + url);
     }
 
     @Override
@@ -164,6 +183,111 @@ public class RNCWebViewClient extends WebViewClient {
                             reactTag,
                             createWebViewEvent(view, url)));
             return true;
+        }
+    }
+
+    /**
+     * E2E Testing: Intercept all resource requests and route through mock server proxy.
+     * This allows the mock server to intercept and mock/block any network request from the WebView.
+     */
+    @Override
+    public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+        // Only intercept in E2E mode with a valid mock server URL
+        if (!mE2EMode || mMockServerUrl == null) {
+            return super.shouldInterceptRequest(view, request);
+        }
+
+        String originalUrl = request.getUrl().toString();
+
+        // Skip interception for localhost/mock server URLs to avoid infinite loops
+        if (isLocalOrMockServerUrl(originalUrl)) {
+            return super.shouldInterceptRequest(view, request);
+        }
+
+        // Skip non-HTTP(S) URLs
+        if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
+            return super.shouldInterceptRequest(view, request);
+        }
+
+        try {
+            // Route through mock server proxy (same pattern as shim.js)
+            String proxyUrl = mMockServerUrl + "/proxy?url=" + URLEncoder.encode(originalUrl, "UTF-8");
+            Log.d(TAG, "[E2E] Intercepting request: " + originalUrl + " -> " + proxyUrl);
+
+            URL url = new URL(proxyUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod(request.getMethod());
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(30000);
+
+            // Copy headers from original request
+            Map<String, String> requestHeaders = request.getRequestHeaders();
+            if (requestHeaders != null) {
+                for (Map.Entry<String, String> header : requestHeaders.entrySet()) {
+                    // Skip host header as it will be set automatically
+                    if (!"Host".equalsIgnoreCase(header.getKey())) {
+                        connection.setRequestProperty(header.getKey(), header.getValue());
+                    }
+                }
+            }
+
+            connection.connect();
+
+            int statusCode = connection.getResponseCode();
+            String contentType = connection.getContentType();
+            String encoding = connection.getContentEncoding();
+
+            // Get the appropriate input stream based on response code
+            InputStream inputStream;
+            if (statusCode >= 400) {
+                inputStream = connection.getErrorStream();
+                if (inputStream == null) {
+                    inputStream = connection.getInputStream();
+                }
+            } else {
+                inputStream = connection.getInputStream();
+            }
+
+            // Parse content type and charset
+            String mimeType = "text/html";
+            String charset = "UTF-8";
+            if (contentType != null) {
+                String[] parts = contentType.split(";");
+                mimeType = parts[0].trim();
+                for (String part : parts) {
+                    if (part.trim().toLowerCase().startsWith("charset=")) {
+                        charset = part.trim().substring(8);
+                    }
+                }
+            }
+
+            Log.d(TAG, "[E2E] Proxied response: status=" + statusCode + ", type=" + mimeType);
+            return new WebResourceResponse(mimeType, charset, statusCode,
+                    connection.getResponseMessage(), connection.getHeaderFields().entrySet().stream()
+                    .filter(e -> e.getKey() != null)
+                    .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, e -> e.getValue().get(0))),
+                    inputStream);
+
+        } catch (Exception e) {
+            Log.w(TAG, "[E2E] Failed to proxy request, falling back to original: " + e.getMessage());
+            // Fallback to original request on error
+            return super.shouldInterceptRequest(view, request);
+        }
+    }
+
+    /**
+     * Check if URL is local or pointing to mock server (should not be proxied)
+     */
+    private boolean isLocalOrMockServerUrl(String url) {
+        try {
+            URL parsedUrl = new URL(url);
+            String host = parsedUrl.getHost();
+            return "localhost".equals(host) ||
+                "127.0.0.1".equals(host) ||
+                "10.0.2.2".equals(host) ||
+                (mMockServerUrl != null && url.startsWith(mMockServerUrl));
+        } catch (Exception e) {
+            return false;
         }
     }
 
