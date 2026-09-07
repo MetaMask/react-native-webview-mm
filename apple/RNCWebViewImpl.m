@@ -17,6 +17,7 @@
 #endif // !TARGET_OS_OSX
 
 #import "objc/runtime.h"
+#import <React/RCTUtils.h>
 
 static NSTimer *keyboardTimer;
 static NSString *const HistoryShimName = @"ReactNativeHistoryShim";
@@ -25,6 +26,16 @@ static NSURLCredential* clientAuthenticationCredential;
 static NSDictionary* customCertificatesForHost;
 
 NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
+
+/**
+ * JSON-serialize a value as a JavaScript literal so attacker-controlled
+ * strings cannot break out of evaluateJavaScript templates.
+ * Returns nil if serialization fails.
+ */
+static NSString *RNCJavaScriptJSONLiteral(id value)
+{
+  return RCTJSONStringify(value, NULL);
+}
 
 #if TARGET_OS_IOS
 // runtime trick to remove WKWebView keyboard default toolbar
@@ -1487,14 +1498,17 @@ RCTAutoInsetsProtocol>
                         self->_onLoadingStart(event);
                     } else {
                         // In aditional to IFrameDetector report all navigated iFrames to the app
-                        NSString *reportIframeUrlsScript = [NSString stringWithFormat:
-                            @"if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {\n"
-                            @"    window.ReactNativeWebView.postMessage(JSON.stringify({\n"
-                            @"    type: 'IFRAME_DETECTED',\n"
-                            @"    iframeUrls: ['%@']\n"
-                            @"}));\n"
-                            @"}", urlString];
-                        [self.webView evaluateJavaScript:reportIframeUrlsScript completionHandler:^(id result, NSError *error) {}];
+                        NSString *serializedUrl = RNCJavaScriptJSONLiteral(urlString);
+                        if (serializedUrl != nil) {
+                            NSString *reportIframeUrlsScript = [NSString stringWithFormat:
+                                @"if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {\n"
+                                @"    window.ReactNativeWebView.postMessage(JSON.stringify({\n"
+                                @"    type: 'IFRAME_DETECTED',\n"
+                                @"    iframeUrls: [%@]\n"
+                                @"}));\n"
+                                @"}", serializedUrl];
+                            [self.webView evaluateJavaScript:reportIframeUrlsScript completionHandler:^(id result, NSError *error) {}];
+                        }
                     }
                 }
 
@@ -2122,9 +2136,14 @@ didFinishNavigation:(WKNavigation *)navigation
 }
 
 - (void)handleBlobDownloadUrl:(NSString *)urlString {
+  NSString *serializedUrl = RNCJavaScriptJSONLiteral(urlString);
+  if (serializedUrl == nil) {
+    NSLog(@"Error downloading blob: failed to serialize URL");
+    return;
+  }
   NSString *jsCode = [NSString stringWithFormat:
      @"var xhr = new XMLHttpRequest();"
-     "xhr.open('GET', '%@', true);"
+     "xhr.open('GET', %@, true);"
      "xhr.responseType = 'blob';"
      "xhr.onload = function(e) {"
      "    if (this.status == 200) {"
@@ -2137,7 +2156,7 @@ didFinishNavigation:(WKNavigation *)navigation
       "        };"
       "    }"
       "};"
-      "xhr.send();", urlString];
+      "xhr.send();", serializedUrl];
   [self.webView evaluateJavaScript:jsCode completionHandler:^(id result, NSError *error) {}];
 }
 
@@ -2160,8 +2179,13 @@ didFinishNavigation:(WKNavigation *)navigation
 }
 
 - (void)handleRegularFileDownload:(NSString *)urlString {
+    NSString *serializedUrl = RNCJavaScriptJSONLiteral(urlString);
+    if (serializedUrl == nil) {
+        NSLog(@"Error downloading file: failed to serialize URL");
+        return;
+    }
     NSString *jsCode = [NSString stringWithFormat:
-        @"fetch('%@')"
+        @"fetch(%@)"
         ".then(response => {"
         "    if (!response.ok) throw new Error('Unable to download file');"
         "    return response.blob();"
@@ -2175,7 +2199,7 @@ didFinishNavigation:(WKNavigation *)navigation
         "})"
         ".catch(error => {"
         "    console.error('Download failed:', error);"
-        "});", urlString];
+        "});", serializedUrl];
     
     [self.webView evaluateJavaScript:jsCode completionHandler:^(id result, NSError *error) {
         if (error) {
