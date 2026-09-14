@@ -21,6 +21,7 @@ import Messaging from './examples/Messaging';
 import MultiMessaging from './examples/MultiMessaging';
 import NativeWebpage from './examples/NativeWebpage';
 import ApplePay from './examples/ApplePay';
+import AdditionalMessageHandlers from './examples/AdditionalMessageHandlers';
 import GooglePay from './examples/GooglePay';
 import CustomMenu from './examples/CustomMenu';
 import OpenWindow from './examples/OpenWindow';
@@ -124,6 +125,15 @@ const TESTS = {
       return <ApplePay />;
     },
   },
+  AdditionalMessageHandlers: {
+    title: 'Additional message handlers ',
+    testId: 'AdditionalMessageHandlers',
+    description:
+      'Native message handler names forwarded to onMessage while Apple Pay is enabled',
+    render() {
+      return <AdditionalMessageHandlers />;
+    },
+  },
   GooglePay: {
     title: 'Google Pay ',
     testId: 'GooglePay',
@@ -172,7 +182,7 @@ export default class App extends Component<Props, State> {
 
   _simulateRestart = () => {
     this.setState({ restarting: true }, () =>
-      this.setState({ restarting: false }),
+      this.setState({ restarting: false })
     );
   };
 
@@ -257,6 +267,13 @@ export default class App extends Component<Props, State> {
               testID="testType_applePay"
               title="ApplePay"
               onPress={() => this._changeTest('ApplePay')}
+            />
+          )}
+          {Platform.OS === 'ios' && (
+            <Button
+              testID="testType_additionalMessageHandlers"
+              title="MessageHandlers"
+              onPress={() => this._changeTest('AdditionalMessageHandlers')}
             />
           )}
           {Platform.OS === 'android' && (
