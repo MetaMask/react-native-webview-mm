@@ -17,8 +17,10 @@ jobs:
           is-high-risk-environment: true
           persist-credentials: false
           ref: ${{ github.sha }}
+      # `prepare` also emits the type declarations into `lib`. Yarn 4 does not
+      # run it automatically at publish time, unlike Yarn 1.
       - name: Build
-        run: yarn build
+        run: yarn prepare
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
