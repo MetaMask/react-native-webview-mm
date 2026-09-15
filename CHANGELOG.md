@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [14.7.0]
+
 ### Added
 
 - add `additionalMessageHandlerNames` prop (iOS) to register extra native script message handlers that forward to `onMessage`, including in Apple Pay mode
@@ -77,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bump ws from 6.2.2 to 6.2.3 in the npm_and_yarn group across 1 directory (https://github.com/MetaMask/react-native-webview-mm/pull/35)
 - sync with upstream v13.13.5 (https://github.com/MetaMask/react-native-webview-mm/pull/47)
 
-[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.6.0...main
+[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.7.0...main
+[14.7.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.6.0...v14.7.0
 [14.6.0]: https://github.com/MetaMask/react-native-webview-mm/compare/7872dfe...v14.6.0
 [14.5.0]: https://github.com/MetaMask/react-native-webview-mm/compare/d93893d...7872dfe
 [14.4.0]: https://github.com/MetaMask/react-native-webview-mm/compare/bfdef1a...d93893d
