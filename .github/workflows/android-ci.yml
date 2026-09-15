@@ -24,8 +24,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Enable Corepack
+        run: corepack enable
       - name: Install npm dependencies
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
         shell: bash
       - name: Build Android test app
         uses: gradle/actions/setup-gradle@db19848a5fa7950289d3668fb053140cf3028d43 #v3.3.2

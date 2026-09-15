@@ -3,47 +3,52 @@ name: Publish Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  publish-release:
-    permissions:
-      contents: write
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v1
+        uses: MetaMask/action-checkout-and-setup@v3
         with:
           is-high-risk-environment: true
-      - uses: MetaMask/action-publish-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: yarn build
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Build
+        run: yarn build
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-release-artifacts-${{ github.sha }}
-          include-hidden-files: true
           retention-days: 4
+          include-hidden-files: true
           path: |
-            ./packages/**/dist
-            ./node_modules/.yarn-integrity
+            ./lib
+            ./node_modules/.yarn-state.yml
 
   publish-npm-dry-run:
-    needs: publish-release
+    name: Publish to NPM (dry run)
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v1
+        uses: MetaMask/action-checkout-and-setup@v3
         with:
           is-high-risk-environment: true
+          persist-credentials: false
           ref: ${{ github.sha }}
+          skip-install: true
       - name: Restore build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: publish-release-artifacts-${{ github.sha }}
       - name: Dry Run Publish
-        # omit npm-token token to perform dry run publish
-        uses: MetaMask/action-npm-publish@v5
+        uses: MetaMask/action-npm-publish@v6
         with:
+          dry-run: true
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           subteam: S042S7RE4AE # @metamask-npm-publishers
         env:
@@ -51,20 +56,51 @@ jobs:
 
   publish-npm:
     name: Publish to NPM
-    environment: npm-publish
-    runs-on: ubuntu-latest
     needs: publish-npm-dry-run
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v1
+        uses: MetaMask/action-checkout-and-setup@v3
         with:
           is-high-risk-environment: true
+          persist-credentials: false
           ref: ${{ github.sha }}
+          skip-install: true
       - name: Restore build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: publish-release-artifacts-${{ github.sha }}
-      - name: Publish to NPM
-        uses: MetaMask/action-npm-publish@v5
+      - name: Publish
+        uses: MetaMask/action-npm-publish@v6
         with:
+          dry-run: false
+          # This `NPM_TOKEN` needs to be manually set to publish a package for
+          # the first time only.
+          # Look in the repository settings under "Environments", and set this
+          # token in the `npm-publish` environment, and delete it after the
+          # initial publish.
           npm-token: ${{ secrets.NPM_TOKEN }}
+        env:
+          SKIP_PREPACK: true
+
+  publish-release:
+    name: Publish to GitHub
+    needs: publish-npm
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout and setup environment
+        uses: MetaMask/action-checkout-and-setup@v3
+        with:
+          is-high-risk-environment: true
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          skip-install: true
+      - uses: MetaMask/action-publish-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
