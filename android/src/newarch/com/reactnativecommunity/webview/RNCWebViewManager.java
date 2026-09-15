@@ -399,6 +399,9 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
     public void setEnableApplePay(RNCWebViewWrapper view, boolean value) {}
 
     @Override
+    public void setAdditionalMessageHandlerNames(RNCWebViewWrapper view, @Nullable ReadableArray value) {}
+
+    @Override
     public void setHideKeyboardAccessoryView(RNCWebViewWrapper view, boolean value) {}
 
     @Override

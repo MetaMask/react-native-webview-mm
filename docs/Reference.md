@@ -87,6 +87,7 @@ This document lays out the current public properties and methods for the React N
 - [`setSupportMultipleWindows`](Reference.md#setSupportMultipleWindows)
 - [`basicAuthCredential`](Reference.md#basicAuthCredential)
 - [`enableApplePay`](Reference.md#enableApplePay)
+- [`additionalMessageHandlerNames`](Reference.md#additionalMessageHandlerNames)
 - [`forceDarkOn`](Reference.md#forceDarkOn)
 - [`useWebView2`](Reference.md#useWebView2)
 - [`minimumFontSize`](Reference.md#minimumFontSize)
@@ -1597,6 +1598,26 @@ Example:
 
 ```javascript
 <WebView enableApplePay={true} />
+```
+
+### `additionalMessageHandlerNames`[⬆](#props-index)
+
+Extra names to register as native `WKScriptMessageHandler`s next to the built-in `ReactNativeWebView` one. A page can call `window.webkit.messageHandlers.<name>.postMessage(...)` and the message arrives on [`onMessage`](Reference.md#onmessage) exactly like a `ReactNativeWebView` message. Non-string bodies are serialized to JSON so `event.nativeEvent.data` is always a string.
+
+Native handlers keep working when [`enableApplePay`](Reference.md#enableApplePay) is `true`, which removes every injected script, so this is the way to receive events from third-party checkout pages that post to their own handler name. Only messages from the main frame are delivered. The handlers are registered when the WebView is created, so pass the prop on mount.
+
+| Type     | Required | Default | Platform |
+| -------- | -------- | ------- | -------- |
+| string[] | No       | none    | iOS      |
+
+Example:
+
+```javascript
+<WebView
+  enableApplePay
+  additionalMessageHandlerNames={['cbOnramp']}
+  onMessage={(event) => console.log(event.nativeEvent.data)}
+/>
 ```
 
 ### `forceDarkOn`[⬆](#props-index)

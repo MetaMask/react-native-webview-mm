@@ -244,6 +244,7 @@ export interface NativeProps extends ViewProps {
 
   menuItems?: ReadonlyArray<Readonly<{ label: string; key: string }>>;
   suppressMenuItems?: Readonly<string>[];
+  additionalMessageHandlerNames?: Readonly<string>[];
   // Workaround to watch if listener if defined
   hasOnFileDownload?: boolean;
   fraudulentWebsiteWarningEnabled?: WithDefault<boolean, true>;

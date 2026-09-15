@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- add `additionalMessageHandlerNames` prop (iOS) to register extra native script message handlers that forward to `onMessage`, including in Apple Pay mode
+
 ## [14.6.0]
 
 ### Added

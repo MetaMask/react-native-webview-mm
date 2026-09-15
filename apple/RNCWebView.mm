@@ -402,6 +402,15 @@ auto stringToOnLoadingFinishNavigationTypeEnum(std::string value) {
         
         [_view setSuppressMenuItems:suppressMenuItems];
     }
+    if (oldViewProps.additionalMessageHandlerNames != newViewProps.additionalMessageHandlerNames) {
+        NSMutableArray *handlerNames = [NSMutableArray array];
+
+        for (const auto &handlerName: newViewProps.additionalMessageHandlerNames) {
+            [handlerNames addObject: RCTNSStringFromString(handlerName)];
+        }
+
+        [_view setAdditionalMessageHandlerNames:handlerNames];
+    }
     if (oldViewProps.hasOnFileDownload != newViewProps.hasOnFileDownload) {
         if (newViewProps.hasOnFileDownload) {
             _view.onFileDownload = [self](NSDictionary* dictionary) {

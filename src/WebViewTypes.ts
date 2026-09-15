@@ -730,6 +730,19 @@ export interface IOSWebViewProps extends WebViewSharedProps {
   enableApplePay?: boolean;
 
   /**
+   * Extra names to register as native WKScriptMessageHandlers next to the
+   * built-in `ReactNativeWebView` one. A page can then call
+   * `window.webkit.messageHandlers.<name>.postMessage(...)` and the message
+   * arrives on `onMessage` exactly like a `ReactNativeWebView` message
+   * (non-string bodies are serialized to JSON). Native handlers keep working
+   * when `enableApplePay` is true, which removes every injected script, so
+   * this is the way to receive events from third-party checkout pages that
+   * post to their own handler name (for example Coinbase Onramp's `cbOnramp`).
+   * @platform ios
+   */
+  additionalMessageHandlerNames?: string[];
+
+  /**
    * An array of objects which will be shown when selecting text. An empty array will suppress the menu.
    * These will appear after a long press to select text.
    * @platform ios, android
