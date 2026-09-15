@@ -64,6 +64,7 @@ static NSString *RNCJavaScriptJSONLiteral(id value)
 #if !TARGET_OS_OSX
 @property (nonatomic, copy) NSArray<NSDictionary *> * _Nullable menuItems;
 @property (nonatomic, copy) NSArray<NSString *> * _Nullable suppressMenuItems;
+@property (nonatomic, copy) NSArray<NSString *> * _Nullable additionalMessageHandlerNames;
 #endif // !TARGET_OS_OSX
 @end
 @implementation RNCWKWebView
@@ -629,6 +630,7 @@ RCTAutoInsetsProtocol>
   if (_webView) {
     [_webView.configuration.userContentController removeScriptMessageHandlerForName:HistoryShimName];
     [_webView.configuration.userContentController removeScriptMessageHandlerForName:MessageHandlerName];
+    [self removeAdditionalMessageHandlers:_webView.configuration];
     [_webView removeObserver:self forKeyPath:@"estimatedProgress"];
     [_webView removeFromSuperview];
     if (@available(iOS 15.0, macOS 12.0, *)) {
@@ -799,13 +801,55 @@ RCTAutoInsetsProtocol>
       _onLoadingFinish(event);
       _disablePromptDuringLoading = NO;
     }
-  } else if ([message.name isEqualToString:MessageHandlerName]) {
+  } else if ([message.name isEqualToString:MessageHandlerName] || [self isAdditionalMessageHandlerName:message.name]) {
     if (_onMessage && message.frameInfo.mainFrame) {
       NSMutableDictionary<NSString *, id> *event = [self baseEvent];
-      [event addEntriesFromDictionary: @{@"data": message.body}];
+      id body = message.body;
+      if (![body isKindOfClass:[NSString class]]) {
+        // Third-party pages may post objects; deliver a JSON string so
+        // onMessage always receives a string like it does for ReactNativeWebView.
+        NSData *json = [NSJSONSerialization isValidJSONObject:body]
+          ? [NSJSONSerialization dataWithJSONObject:body options:0 error:nil]
+          : nil;
+        body = json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : [body description];
+      }
+      [event addEntriesFromDictionary: @{@"data": body}];
       [event addEntriesFromDictionary: @{@"url": message.frameInfo.request.URL.absoluteString}];
       _onMessage(event);
     }
+  }
+}
+
+- (BOOL)isAdditionalMessageHandlerName:(NSString *)name {
+  return name != nil && [_additionalMessageHandlerNames containsObject:name];
+}
+
+- (void)removeAdditionalMessageHandlers:(WKWebViewConfiguration *)wkWebViewConfig {
+  for (NSString *name in _additionalMessageHandlerNames) {
+    if ([name isEqualToString:MessageHandlerName]) {
+      continue;
+    }
+    [wkWebViewConfig.userContentController removeScriptMessageHandlerForName:name];
+  }
+}
+
+- (void)addAdditionalMessageHandlers:(WKWebViewConfiguration *)wkWebViewConfig {
+  for (NSString *name in _additionalMessageHandlerNames) {
+    if ([name isEqualToString:MessageHandlerName]) {
+      continue;
+    }
+    [wkWebViewConfig.userContentController addScriptMessageHandler:[[RNCWeakScriptMessageDelegate alloc] initWithDelegate:self]
+                                                              name:name];
+  }
+}
+
+- (void)setAdditionalMessageHandlerNames:(NSArray<NSString *> *)additionalMessageHandlerNames {
+  if (_webView != nil) {
+    [self removeAdditionalMessageHandlers:_webView.configuration];
+  }
+  _additionalMessageHandlerNames = [additionalMessageHandlerNames copy];
+  if (_webView != nil) {
+    [self resetupScripts:_webView.configuration];
   }
 }
 
@@ -1963,10 +2007,12 @@ didFinishNavigation:(WKNavigation *)navigation
 - (void)resetupScripts:(WKWebViewConfiguration *)wkWebViewConfig {
   [wkWebViewConfig.userContentController removeAllUserScripts];
   [wkWebViewConfig.userContentController removeScriptMessageHandlerForName:MessageHandlerName];
+  [self removeAdditionalMessageHandlers:wkWebViewConfig];
   if(self.enableApplePay){
     if (self.postMessageScript){
       [wkWebViewConfig.userContentController addScriptMessageHandler:[[RNCWeakScriptMessageDelegate alloc] initWithDelegate:self]
                                                                 name:MessageHandlerName];
+      [self addAdditionalMessageHandlers:wkWebViewConfig];
     }
     return;
   }
@@ -2097,6 +2143,7 @@ didFinishNavigation:(WKNavigation *)navigation
     if (self.postMessageScript){
       [wkWebViewConfig.userContentController addScriptMessageHandler:[[RNCWeakScriptMessageDelegate alloc] initWithDelegate:self]
                                                                 name:MessageHandlerName];
+      [self addAdditionalMessageHandlers:wkWebViewConfig];
       [wkWebViewConfig.userContentController addUserScript:self.postMessageScript];
     }
     if (self.atEndScript) {
