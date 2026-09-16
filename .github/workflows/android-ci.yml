@@ -2,7 +2,7 @@ name: Android
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 jobs:
   build:
@@ -18,6 +18,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Enable Corepack
+        run: corepack enable
+      # Corepack has to be enabled first, otherwise the cache step resolves the
+      # runner's global Yarn 1, which refuses to run this project.
+      - name: Restore Yarn cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
           cache: 'yarn'
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -25,7 +33,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Install npm dependencies
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
         shell: bash
       - name: Build Android test app
         uses: gradle/actions/setup-gradle@db19848a5fa7950289d3668fb053140cf3028d43 #v3.3.2
