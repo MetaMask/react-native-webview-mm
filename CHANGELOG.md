@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix: serialize URLs used in native download JavaScript ([#79](https://github.com/MetaMask/react-native-webview-mm/pull/79))
 
+### Added
+
+- add `additionalMessageHandlerNames` prop (iOS) to register extra native script message handlers that forward to `onMessage`, including in Apple Pay mode
+
 ## [14.7.0]
 
 ### Added
