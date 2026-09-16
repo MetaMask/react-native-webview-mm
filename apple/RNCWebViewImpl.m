@@ -9,6 +9,7 @@
 #import <React/RCTConvert.h>
 #import <React/RCTAutoInsetsProtocol.h>
 #import "RNCWKProcessPoolManager.h"
+#import "IFrameDetector.h"
 #if !TARGET_OS_OSX
 #import <UIKit/UIKit.h>
 #else
@@ -16,6 +17,7 @@
 #endif // !TARGET_OS_OSX
 
 #import "objc/runtime.h"
+#import <React/RCTUtils.h>
 
 static NSTimer *keyboardTimer;
 static NSString *const HistoryShimName = @"ReactNativeHistoryShim";
@@ -25,7 +27,17 @@ static NSDictionary* customCertificatesForHost;
 
 NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
 
-#if !TARGET_OS_OSX
+/**
+ * JSON-serialize a value as a JavaScript literal so attacker-controlled
+ * strings cannot break out of evaluateJavaScript templates.
+ * Returns nil if serialization fails.
+ */
+static NSString *RNCJavaScriptJSONLiteral(id value)
+{
+  return RCTJSONStringify(value, NULL);
+}
+
+#if TARGET_OS_IOS
 // runtime trick to remove WKWebView keyboard default toolbar
 // see: http://stackoverflow.com/questions/19033292/ios-7-uiwebview-keyboard-issue/19042279#19042279
 @interface _SwizzleHelperWK : UIView
@@ -46,12 +58,13 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
   return nil;
 }
 @end
-#endif // !TARGET_OS_OSX
+#endif // TARGET_OS_IOS
 
 @interface RNCWKWebView : WKWebView
 #if !TARGET_OS_OSX
 @property (nonatomic, copy) NSArray<NSDictionary *> * _Nullable menuItems;
 @property (nonatomic, copy) NSArray<NSString *> * _Nullable suppressMenuItems;
+@property (nonatomic, copy) NSArray<NSString *> * _Nullable additionalMessageHandlerNames;
 #endif // !TARGET_OS_OSX
 @end
 @implementation RNCWKWebView
@@ -117,13 +130,16 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
 @interface RNCWebViewImpl () <WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler, WKHTTPCookieStoreObserver,
 #if !TARGET_OS_OSX
 UIScrollViewDelegate,
+UIGestureRecognizerDelegate,
 #endif // !TARGET_OS_OSX
 RCTAutoInsetsProtocol>
 
 @property (nonatomic, copy) RNCWKWebView *webView;
 @property (nonatomic, strong) WKUserScript *postMessageScript;
+@property (nonatomic, strong) WKUserScript *injectedObjectJsonScript;
 @property (nonatomic, strong) WKUserScript *atStartScript;
 @property (nonatomic, strong) WKUserScript *atEndScript;
+@property (nonatomic, strong) WKUserScript *iframeDetectorScript;
 @end
 
 @implementation RNCWebViewImpl
@@ -165,35 +181,54 @@ RCTAutoInsetsProtocol>
     _bounces = YES;
     _scrollEnabled = YES;
     _showsHorizontalScrollIndicator = YES;
+    _javaScriptEnabled = YES;
+    _allowsLinkPreview = YES;
     _showsVerticalScrollIndicator = YES;
     _directionalLockEnabled = YES;
+    _useSharedProcessPool = YES;
+    _cacheEnabled = YES;
+    _mediaPlaybackRequiresUserAction = YES;
     _automaticallyAdjustContentInsets = YES;
     _autoManageStatusBarEnabled = YES;
     _contentInset = UIEdgeInsetsZero;
     _savedKeyboardDisplayRequiresUserAction = YES;
-#if !TARGET_OS_OSX
-    _savedStatusBarStyle = RCTSharedApplication().statusBarStyle;
-    _savedStatusBarHidden = RCTSharedApplication().statusBarHidden;
-#endif // !TARGET_OS_OSX
     _injectedJavaScript = nil;
     _injectedJavaScriptForMainFrameOnly = YES;
     _injectedJavaScriptBeforeContentLoaded = nil;
     _injectedJavaScriptBeforeContentLoadedForMainFrameOnly = YES;
     _disablePromptDuringLoading = YES;
 
+    _enableApplePay = NO;
+
+    self.iframeDetectorScript = [[WKUserScript alloc] initWithSource:getIFrameDetectorScript()
+                                                       injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
+                                                    forMainFrameOnly:NO];
+#if TARGET_OS_IOS
+    _savedStatusBarStyle = RCTSharedApplication().statusBarStyle;
+    _savedStatusBarHidden = RCTSharedApplication().statusBarHidden;
+#endif // TARGET_OS_IOS
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* __IPHONE_11_0 */
     _savedContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 #endif
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000 /* __IPHONE_13_0 */
     _savedAutomaticallyAdjustsScrollIndicatorInsets = NO;
+    _fraudulentWebsiteWarningEnabled = YES;
 #endif
-    _enableApplePay = NO;
+#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 140500 /* __IPHONE_13_0 */
+    _textInteractionEnabled = YES;
+#endif
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000 /* iOS 15 */
     _mediaCapturePermissionGrantType = RNCWebViewPermissionGrantType_Prompt;
 #endif
+#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 160000 /* iOS 15 */
+    if (@available(iOS 16.0, *)) {
+      _editMenuInteraction = [[UIEditMenuInteraction alloc] initWithDelegate:self];
+      [self addInteraction:_editMenuInteraction];
+    }
+#endif
   }
 
-#if !TARGET_OS_OSX
+#if TARGET_OS_IOS
   [[NSNotificationCenter defaultCenter]addObserver:self
                                           selector:@selector(appDidBecomeActive)
                                               name:UIApplicationDidBecomeActiveNotification
@@ -228,7 +263,7 @@ RCTAutoInsetsProtocol>
                                                object:nil];
 
   }
-#endif // !TARGET_OS_OSX
+#endif // TARGET_OS_IOS
   return self;
 }
 
@@ -248,29 +283,51 @@ RCTAutoInsetsProtocol>
     if (pressSender.state != UIGestureRecognizerStateEnded || !self.menuItems) {
         return;
     }
-    // When a long press ends, bring up our custom UIMenu if defined
-    if (self.menuItems.count == 0) {
+    if (@available(iOS 16.0, *)) {
+      CGPoint location = [pressSender locationInView:self];
+      UIEditMenuConfiguration *config = [UIEditMenuConfiguration configurationWithIdentifier:nil sourcePoint:location];
+      [_editMenuInteraction presentEditMenuWithConfiguration:config];
+    } else {
+      // When a long press ends, bring up our custom UIMenu if defined
+      if (self.menuItems.count == 0) {
         UIMenuController *menuController = [UIMenuController sharedMenuController];
         menuController.menuItems = nil;
-        [menuController setMenuVisible:NO animated:YES];
+        [menuController showMenuFromView:self rect:self.bounds];
         return;
-    }
-    UIMenuController *menuController = [UIMenuController sharedMenuController];
-    NSMutableArray *menuControllerItems = [NSMutableArray arrayWithCapacity:self.menuItems.count];
+      }
 
-    for(NSDictionary *menuItem in self.menuItems) {
-      NSString *menuItemLabel = [RCTConvert NSString:menuItem[@"label"]];
-      NSString *menuItemKey = [RCTConvert NSString:menuItem[@"key"]];
-      NSString *sel = [NSString stringWithFormat:@"%@%@", CUSTOM_SELECTOR, menuItemKey];
-      UIMenuItem *item = [[UIMenuItem alloc] initWithTitle: menuItemLabel
-                                                    action: NSSelectorFromString(sel)];
-      [menuControllerItems addObject: item];
+      UIMenuController *menuController = [UIMenuController sharedMenuController];
+      NSMutableArray *menuControllerItems = [NSMutableArray arrayWithCapacity:self.menuItems.count];
+      
+      for(NSDictionary *menuItem in self.menuItems) {
+        NSString *menuItemLabel = [RCTConvert NSString:menuItem[@"label"]];
+        NSString *menuItemKey = [RCTConvert NSString:menuItem[@"key"]];
+        NSString *sel = [NSString stringWithFormat:@"%@%@", CUSTOM_SELECTOR, menuItemKey];
+        UIMenuItem *item = [[UIMenuItem alloc] initWithTitle: menuItemLabel
+                                                      action: NSSelectorFromString(sel)];
+        [menuControllerItems addObject: item];
+      }
+      menuController.menuItems = menuControllerItems;
+      [menuController showMenuFromView:self rect:self.bounds];
     }
-
-    menuController.menuItems = menuControllerItems;
-    [menuController setMenuVisible:YES animated:YES];
 }
 
+- (UIMenu *)editMenuInteraction:(UIEditMenuInteraction *)interaction menuForConfiguration:(UIEditMenuConfiguration *)configuration suggestedActions:(NSArray<UIMenuElement *> *)suggestedActions API_AVAILABLE(ios(16.0))
+{
+  NSMutableArray<UICommand *> *menuItems = [NSMutableArray new];
+  for(NSDictionary *menuItem in self.menuItems) {
+    NSString *menuItemLabel = [RCTConvert NSString:menuItem[@"label"]];
+    NSString *menuItemKey = [RCTConvert NSString:menuItem[@"key"]];
+    NSString *sel = [NSString stringWithFormat:@"%@%@", CUSTOM_SELECTOR, menuItemKey];
+    UICommand *command = [UICommand commandWithTitle:menuItemLabel
+                                               image:nil
+                                              action:NSSelectorFromString(sel)
+                                        propertyList:nil];
+    [menuItems addObject:command];
+  }
+  UIMenu *menu = [UIMenu menuWithChildren:menuItems];
+  return menu;
+}
 #endif // !TARGET_OS_OSX
 
 - (void)dealloc
@@ -433,6 +490,7 @@ RCTAutoInsetsProtocol>
     wkWebViewConfig.processPool = [[RNCWKProcessPoolManager sharedManager] sharedProcessPool];
   }
   wkWebViewConfig.userContentController = [WKUserContentController new];
+  [wkWebViewConfig.userContentController addScriptMessageHandler:self name:@"base64Handler"];
 
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000 /* iOS 13 */
   if (@available(iOS 13.0, *)) {
@@ -463,6 +521,7 @@ RCTAutoInsetsProtocol>
 
 #if !TARGET_OS_OSX
   wkWebViewConfig.allowsInlineMediaPlayback = _allowsInlineMediaPlayback;
+  wkWebViewConfig.allowsPictureInPictureMediaPlayback = _allowsPictureInPictureMediaPlayback;
   wkWebViewConfig.mediaTypesRequiringUserActionForPlayback = _mediaPlaybackRequiresUserAction
   ? WKAudiovisualMediaTypeAll
   : WKAudiovisualMediaTypeNone;
@@ -531,6 +590,7 @@ RCTAutoInsetsProtocol>
     [self setKeyboardDisplayRequiresUserAction: _savedKeyboardDisplayRequiresUserAction];
     [self visitSource];
   }
+
 #if !TARGET_OS_OSX
   // Allow this object to recognize gestures
   if (self.menuItems != nil) {
@@ -570,8 +630,14 @@ RCTAutoInsetsProtocol>
   if (_webView) {
     [_webView.configuration.userContentController removeScriptMessageHandlerForName:HistoryShimName];
     [_webView.configuration.userContentController removeScriptMessageHandlerForName:MessageHandlerName];
+    [self removeAdditionalMessageHandlers:_webView.configuration];
     [_webView removeObserver:self forKeyPath:@"estimatedProgress"];
     [_webView removeFromSuperview];
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        [_webView pauseAllMediaPlaybackWithCompletionHandler:nil];
+    } else if (@available(iOS 14.5, macOS 11.3, *)) {
+        [_webView suspendAllMediaPlayback:nil];
+    }
 #if !TARGET_OS_OSX
     _webView.scrollView.delegate = nil;
     if (_menuItems) {
@@ -591,7 +657,7 @@ RCTAutoInsetsProtocol>
 #endif
 }
 
-#if !TARGET_OS_OSX
+#if TARGET_OS_IOS
 -(void)showFullScreenVideoStatusBars
 {
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -647,7 +713,7 @@ RCTAutoInsetsProtocol>
     }];
   }
 }
-#endif // !TARGET_OS_OSX
+#endif // TARGET_OS_IOS
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context{
   if ([keyPath isEqual:@"estimatedProgress"] && object == self.webView) {
@@ -725,19 +791,65 @@ RCTAutoInsetsProtocol>
 - (void)userContentController:(WKUserContentController *)userContentController
       didReceiveScriptMessage:(WKScriptMessage *)message
 {
-  if ([message.name isEqualToString:HistoryShimName]) {
+  if ([message.name isEqualToString:@"base64Handler"]) {
+      NSString *base64String = message.body;
+      [self downloadBase64File:base64String];
+  } else if ([message.name isEqualToString:HistoryShimName]) {
     if (_onLoadingFinish) {
       NSMutableDictionary<NSString *, id> *event = [self baseEvent];
       [event addEntriesFromDictionary: @{@"navigationType": message.body}];
       _onLoadingFinish(event);
       _disablePromptDuringLoading = NO;
     }
-  } else if ([message.name isEqualToString:MessageHandlerName]) {
-    if (_onMessage) {
+  } else if ([message.name isEqualToString:MessageHandlerName] || [self isAdditionalMessageHandlerName:message.name]) {
+    if (_onMessage && message.frameInfo.mainFrame) {
       NSMutableDictionary<NSString *, id> *event = [self baseEvent];
-      [event addEntriesFromDictionary: @{@"data": message.body}];
+      id body = message.body;
+      if (![body isKindOfClass:[NSString class]]) {
+        // Third-party pages may post objects; deliver a JSON string so
+        // onMessage always receives a string like it does for ReactNativeWebView.
+        NSData *json = [NSJSONSerialization isValidJSONObject:body]
+          ? [NSJSONSerialization dataWithJSONObject:body options:0 error:nil]
+          : nil;
+        body = json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : [body description];
+      }
+      [event addEntriesFromDictionary: @{@"data": body}];
+      [event addEntriesFromDictionary: @{@"url": message.frameInfo.request.URL.absoluteString}];
       _onMessage(event);
     }
+  }
+}
+
+- (BOOL)isAdditionalMessageHandlerName:(NSString *)name {
+  return name != nil && [_additionalMessageHandlerNames containsObject:name];
+}
+
+- (void)removeAdditionalMessageHandlers:(WKWebViewConfiguration *)wkWebViewConfig {
+  for (NSString *name in _additionalMessageHandlerNames) {
+    if ([name isEqualToString:MessageHandlerName]) {
+      continue;
+    }
+    [wkWebViewConfig.userContentController removeScriptMessageHandlerForName:name];
+  }
+}
+
+- (void)addAdditionalMessageHandlers:(WKWebViewConfiguration *)wkWebViewConfig {
+  for (NSString *name in _additionalMessageHandlerNames) {
+    if ([name isEqualToString:MessageHandlerName]) {
+      continue;
+    }
+    [wkWebViewConfig.userContentController addScriptMessageHandler:[[RNCWeakScriptMessageDelegate alloc] initWithDelegate:self]
+                                                              name:name];
+  }
+}
+
+- (void)setAdditionalMessageHandlerNames:(NSArray<NSString *> *)additionalMessageHandlerNames {
+  if (_webView != nil) {
+    [self removeAdditionalMessageHandlers:_webView.configuration];
+  }
+  _additionalMessageHandlerNames = [additionalMessageHandlerNames copy];
+  if (_webView != nil) {
+    [self resetupScripts:_webView.configuration];
   }
 }
 
@@ -763,22 +875,25 @@ RCTAutoInsetsProtocol>
   }
 }
 
-#if !TARGET_OS_OSX
 - (void)setContentInset:(UIEdgeInsets)contentInset
 {
+#if !TARGET_OS_OSX
   _contentInset = contentInset;
   [RCTView autoAdjustInsetsForView:self
                     withScrollView:_webView.scrollView
                       updateOffset:NO];
+#endif // !TARGET_OS_OSX
 }
 
 - (void)refreshContentInset
 {
+#if !TARGET_OS_OSX
   [RCTView autoAdjustInsetsForView:self
                     withScrollView:_webView.scrollView
                       updateOffset:YES];
-}
 #endif // !TARGET_OS_OSX
+}
+
 
 - (void)visitSource
 {
@@ -806,6 +921,9 @@ RCTAutoInsetsProtocol>
   NSString *allowingReadAccessToURL = _allowingReadAccessToURL;
 
   [self syncCookiesToWebView:^{
+    // Add observer to sync cookies from webview to sharedHTTPCookieStorage
+    [webView.configuration.websiteDataStore.httpCookieStore addObserver:self];
+    
     // Because of the way React works, as pages redirect, we actually end up
     // passing the redirect urls back here, so we ignore them if trying to load
     // the same url. We'll expose a call to 'reload' to allow a user to load
@@ -839,8 +957,10 @@ RCTAutoInsetsProtocol>
     _webView.suppressMenuItems = suppressMenuItems;
 }
 
+#if TARGET_OS_IOS
 -(void)setKeyboardDisplayRequiresUserAction:(BOOL)keyboardDisplayRequiresUserAction
 {
+  _keyboardDisplayRequiresUserAction = keyboardDisplayRequiresUserAction;
   if (_webView == nil) {
     _savedKeyboardDisplayRequiresUserAction = keyboardDisplayRequiresUserAction;
     return;
@@ -873,7 +993,7 @@ RCTAutoInsetsProtocol>
     SEL selector = sel_getUid("_elementDidFocus:userIsInteracting:blurPreviousNode:activityStateChanges:userObject:");
     method = class_getInstanceMethod(class, selector);
     IMP original = method_getImplementation(method);
-    override = imp_implementationWithBlock(^void(id me, void* arg0, BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
+    override = imp_implementationWithBlock(^void(id me, void* arg0, __unused BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
       ((void (*)(id, SEL, void*, BOOL, BOOL, BOOL, id))original)(me, selector, arg0, TRUE, arg2, arg3, arg4);
     });
   }
@@ -882,7 +1002,7 @@ RCTAutoInsetsProtocol>
     SEL selector = sel_getUid("_elementDidFocus:userIsInteracting:blurPreviousNode:changingActivityState:userObject:");
     method = class_getInstanceMethod(class, selector);
     IMP original = method_getImplementation(method);
-    override = imp_implementationWithBlock(^void(id me, void* arg0, BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
+    override = imp_implementationWithBlock(^void(id me, void* arg0, __unused BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
       ((void (*)(id, SEL, void*, BOOL, BOOL, BOOL, id))original)(me, selector, arg0, TRUE, arg2, arg3, arg4);
     });
   }
@@ -891,7 +1011,7 @@ RCTAutoInsetsProtocol>
     SEL selector = sel_getUid("_startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:");
     method = class_getInstanceMethod(class, selector);
     IMP original = method_getImplementation(method);
-    override = imp_implementationWithBlock(^void(id me, void* arg0, BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
+    override = imp_implementationWithBlock(^void(id me, void* arg0, __unused BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
       ((void (*)(id, SEL, void*, BOOL, BOOL, BOOL, id))original)(me, selector, arg0, TRUE, arg2, arg3, arg4);
     });
   } else {
@@ -899,7 +1019,7 @@ RCTAutoInsetsProtocol>
     SEL selector = sel_getUid("_startAssistingNode:userIsInteracting:blurPreviousNode:userObject:");
     method = class_getInstanceMethod(class, selector);
     IMP original = method_getImplementation(method);
-    override = imp_implementationWithBlock(^void(id me, void* arg0, BOOL arg1, BOOL arg2, id arg3) {
+    override = imp_implementationWithBlock(^void(id me, void* arg0, __unused BOOL arg1, BOOL arg2, id arg3) {
       ((void (*)(id, SEL, void*, BOOL, BOOL, id))original)(me, selector, arg0, TRUE, arg2, arg3);
     });
   }
@@ -907,14 +1027,90 @@ RCTAutoInsetsProtocol>
   method_setImplementation(method, override);
 }
 
+- (void)downloadBase64File:(NSString *)base64String {
+    // Infer file extension from the data: URL before doing any heavy work.
+    // For generic application/octet-stream payloads we suppress the download
+    // entirely (no "Do you want to download File.bin?" alert), since these
+    // are typically iframe-driven noise rather than user‑initiated downloads.
+    NSString *fileExtension = [self fileExtensionFromBase64String:base64String];
+    if ([[fileExtension lowercaseString] isEqualToString:@"bin"]) {
+        NSLog(@"RNCWebViewImpl: Ignoring generic binary download (File.bin) from data: URL");
+        return;
+    }
+
+    NSArray *components = [base64String componentsSeparatedByString:@","];
+    NSString *base64ContentPart = components.lastObject;
+
+    NSData *fileData = [[NSData alloc] initWithBase64EncodedString:base64ContentPart options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    [self showDownloadAlert:fileExtension invokeDownload:^{
+    	NSString *tempFilePath = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"File.%@", fileExtension]];
+        [fileData writeToFile:tempFilePath atomically:YES];
+
+        NSURL *tempFileURL = [NSURL fileURLWithPath:tempFilePath];
+
+        UIDocumentPickerViewController *documentPicker = nil;
+        if (@available(iOS 14.0, *)) {
+            documentPicker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[tempFileURL] asCopy:YES];
+        } else {
+            // Usage of initWithURL:inMode: might lose file's extension and user has to type it manually
+            // Problem was solved for iOS 14 and higher with initForExportingURLs
+            documentPicker = [[UIDocumentPickerViewController alloc] initWithURL:tempFileURL inMode:UIDocumentPickerModeExportToService];
+        }
+        documentPicker.delegate = self;
+        documentPicker.modalPresentationStyle = UIModalPresentationFullScreen;
+
+        UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+        while (rootViewController.presentedViewController) {
+            rootViewController = rootViewController.presentedViewController;
+        }
+    [rootViewController presentViewController:documentPicker animated:YES completion:nil];
+    }];
+}
+
+- (NSString *)fileExtensionFromBase64String:(NSString *)base64String {
+    NSRange mimeTypeRange = [base64String rangeOfString:@"data:"];
+    NSRange base64Range = [base64String rangeOfString:@";base64"];
+
+    if (mimeTypeRange.location != NSNotFound && base64Range.location != NSNotFound) {
+        NSUInteger start = NSMaxRange(mimeTypeRange);
+        NSUInteger length = base64Range.location - start;
+        NSString *mimeType = [base64String substringWithRange:NSMakeRange(start, length)];
+
+        NSDictionary *mimeTypeToExtension = @{
+            @"image/png": @"png",
+            @"image/jpeg": @"jpg",
+            @"image/gif": @"gif",
+            @"image/svg+xml": @"svg",
+            @"application/pdf": @"pdf",
+            @"text/plain": @"txt",
+            @"application/json": @"json",
+            @"application/octet-stream": @"bin"
+        };
+
+        NSString *fileExtension = mimeTypeToExtension[mimeType];
+        return fileExtension ?: @"bin";
+    }
+
+    return @"bin";
+}
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+   if (urls.count > 0) {
+       NSURL *destinationURL = urls.firstObject;
+   }
+}
+
 -(void)setHideKeyboardAccessoryView:(BOOL)hideKeyboardAccessoryView
 {
+  _hideKeyboardAccessoryView = hideKeyboardAccessoryView;
+  _savedHideKeyboardAccessoryView = hideKeyboardAccessoryView;
+
   if (_webView == nil) {
-    _savedHideKeyboardAccessoryView = hideKeyboardAccessoryView;
     return;
   }
 
   if (_savedHideKeyboardAccessoryView == false) {
+    [self __addInputAccessoryView];
     return;
   }
 
@@ -940,6 +1136,22 @@ RCTAutoInsetsProtocol>
 
     objc_registerClassPair(newClass);
   }
+
+  object_setClass(subview, newClass);
+}
+#endif // TARGET_OS_IOS
+
+- (void)__addInputAccessoryView {
+  UIView* subview;
+
+  for (UIView* view in _webView.scrollView.subviews) {
+    if([[view.class description] hasSuffix:@"_SwizzleHelperWK"])
+      subview = view;
+  }
+
+  if(subview == nil) return;
+
+  Class newClass = subview.superclass;
 
   object_setClass(subview, newClass);
 }
@@ -1111,9 +1323,13 @@ RCTAutoInsetsProtocol>
  */
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
+  if (_suppressJavaScriptDialogs) {
+    completionHandler();
+    return;
+  }
 #if !TARGET_OS_OSX
   UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
-  [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+  [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
     completionHandler();
   }]];
   [[self topViewController] presentViewController:alert animated:YES completion:NULL];
@@ -1130,12 +1346,16 @@ RCTAutoInsetsProtocol>
  * confirm
  */
 - (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL))completionHandler{
+  if (_suppressJavaScriptDialogs) {
+    completionHandler(NO);
+    return;
+  }
 #if !TARGET_OS_OSX
   UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleAlert];
-  [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+  [alert addAction:[UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
     completionHandler(YES);
   }]];
-  [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+  [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(__unused UIAlertAction *action) {
     completionHandler(NO);
   }]];
   [[self topViewController] presentViewController:alert animated:YES completion:NULL];
@@ -1155,44 +1375,50 @@ RCTAutoInsetsProtocol>
  * prompt
  */
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString *))completionHandler{
+  if (_suppressJavaScriptDialogs) {
+    completionHandler(nil);
+    return;
+  }
   if (!_disablePromptDuringLoading) {
 #if !TARGET_OS_OSX
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:prompt preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-      textField.text = defaultText;
-    }];
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-      completionHandler([[alert.textFields lastObject] text]);
-    }];
-    [alert addAction:okAction];
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+  UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:prompt preferredStyle:UIAlertControllerStyleAlert];
+  [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+    textField.text = defaultText;
+  }];
+  UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+    completionHandler([[alert.textFields lastObject] text]);
+  }];
+  [alert addAction:okAction];
+  UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(__unused UIAlertAction *action) {
+    completionHandler(nil);
+  }];
+  [alert addAction:cancelAction];
+  alert.preferredAction = okAction;
+  [[self topViewController] presentViewController:alert animated:YES completion:NULL];
+#else
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText:prompt];
+
+  const NSRect RCTSingleTextFieldFrame = NSMakeRect(0.0, 0.0, 275.0, 22.0);
+  NSTextField *textField = [[NSTextField alloc] initWithFrame:RCTSingleTextFieldFrame];
+  textField.cell.scrollable = YES;
+  if (@available(macOS 10.11, *)) {
+    textField.maximumNumberOfLines = 1;
+  }
+  textField.stringValue = defaultText;
+  [alert setAccessoryView:textField];
+
+  [alert addButtonWithTitle:NSLocalizedString(@"OK", @"OK button")];
+  [alert addButtonWithTitle:NSLocalizedString(@"Cancel", @"Cancel button")];
+  [alert beginSheetModalForWindow:[NSApp keyWindow] completionHandler:^(NSModalResponse response) {
+    if (response == NSAlertFirstButtonReturn) {
+      completionHandler([textField stringValue]);
+    } else {
       completionHandler(nil);
     }];
     [alert addAction:cancelAction];
     alert.preferredAction = okAction;
     [[self topViewController] presentViewController:alert animated:YES completion:NULL];
-#else
-    NSAlert *alert = [[NSAlert alloc] init];
-    [alert setMessageText:prompt];
-
-    const NSRect RCTSingleTextFieldFrame = NSMakeRect(0.0, 0.0, 275.0, 22.0);
-    NSTextField *textField = [[NSTextField alloc] initWithFrame:RCTSingleTextFieldFrame];
-    textField.cell.scrollable = YES;
-    if (@available(macOS 10.11, *)) {
-      textField.maximumNumberOfLines = 1;
-    }
-    textField.stringValue = defaultText;
-    [alert setAccessoryView:textField];
-
-    [alert addButtonWithTitle:NSLocalizedString(@"OK", @"OK button")];
-    [alert addButtonWithTitle:NSLocalizedString(@"Cancel", @"Cancel button")];
-    [alert beginSheetModalForWindow:[NSApp keyWindow] completionHandler:^(NSModalResponse response) {
-      if (response == NSAlertFirstButtonReturn) {
-        completionHandler([textField stringValue]);
-      } else {
-        completionHandler(nil);
-      }
-    }];
 #endif // !TARGET_OS_OSX
   } else {
     completionHandler(nil);
@@ -1246,6 +1472,28 @@ RCTAutoInsetsProtocol>
     static NSDictionary<NSNumber *, NSString *> *navigationTypes;
     static dispatch_once_t onceToken;
 
+    NSString *urlString = navigationAction.request.URL.absoluteString;
+    // Some Dapps on opening send to mobile blob: urls. We ignore them and handle only urls which were received on clicks on Link (based on navigationType)
+    if ([urlString hasPrefix:@"blob:"] && navigationAction.navigationType == WKNavigationTypeLinkActivated) {
+        if (_onFileDownload) {
+            [self handleBlobDownloadUrl:urlString];
+            decisionHandler(WKNavigationActionPolicyCancel);
+            return;
+        }
+    } else if ([urlString hasPrefix:@"data:"]) {
+        if (_onFileDownload) {
+            [self downloadBase64File:urlString];
+            decisionHandler(WKNavigationActionPolicyCancel);
+            return;
+        }
+    } else if ([self isDownloadableFileURL:navigationAction.request.URL]) {
+      	if (_onFileDownload) {
+        	[self handleRegularFileDownload:urlString];
+        	decisionHandler(WKNavigationActionPolicyCancel);
+        	return;
+        }
+    }
+
     dispatch_once(&onceToken, ^{
         navigationTypes = @{
             @(WKNavigationTypeLinkActivated): @"click",
@@ -1277,7 +1525,6 @@ RCTAutoInsetsProtocol>
     }
 
     if (_onShouldStartLoadWithRequest) {
-        NSMutableDictionary<NSString *, id> *event = [self baseEvent];
         int lockIdentifier = [[RNCWebViewDecisionManager getInstance] setDecisionHandler: ^(BOOL shouldStart){
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (!shouldStart) {
@@ -1293,6 +1540,19 @@ RCTAutoInsetsProtocol>
                             @"navigationType": navigationTypes[@(navigationType)]
                         }];
                         self->_onLoadingStart(event);
+                    } else {
+                        // In aditional to IFrameDetector report all navigated iFrames to the app
+                        NSString *serializedUrl = RNCJavaScriptJSONLiteral(urlString);
+                        if (serializedUrl != nil) {
+                            NSString *reportIframeUrlsScript = [NSString stringWithFormat:
+                                @"if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {\n"
+                                @"    window.ReactNativeWebView.postMessage(JSON.stringify({\n"
+                                @"    type: 'IFRAME_DETECTED',\n"
+                                @"    iframeUrls: [%@]\n"
+                                @"}));\n"
+                                @"}", serializedUrl];
+                            [self.webView evaluateJavaScript:reportIframeUrlsScript completionHandler:^(id result, NSError *error) {}];
+                        }
                     }
                 }
 
@@ -1301,6 +1561,7 @@ RCTAutoInsetsProtocol>
             });
 
         }];
+        NSMutableDictionary<NSString *, id> *event = [self baseEvent];
         if (request.mainDocumentURL) {
           [event addEntriesFromDictionary: @{
             @"mainDocumentURL": (request.mainDocumentURL).absoluteString,
@@ -1356,12 +1617,11 @@ RCTAutoInsetsProtocol>
                     decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler
 {
   WKNavigationResponsePolicy policy = WKNavigationResponsePolicyAllow;
-  if (_onHttpError) {
-    if ([navigationResponse.response isKindOfClass:[NSHTTPURLResponse class]]) {
-      NSHTTPURLResponse *response = (NSHTTPURLResponse *)navigationResponse.response;
-      NSInteger statusCode = response.statusCode;
-
-      if (statusCode >= 400 && navigationResponse.forMainFrame) {
+  if ([navigationResponse.response isKindOfClass:[NSHTTPURLResponse class]]) {
+    NSHTTPURLResponse *response = (NSHTTPURLResponse *)navigationResponse.response;
+    NSInteger statusCode = response.statusCode;
+    if (_onHttpError && navigationResponse.forMainFrame) {
+      if (statusCode >= 400) {
         NSMutableDictionary<NSString *, id> *httpErrorEvent = [self baseEvent];
         [httpErrorEvent addEntriesFromDictionary: @{
           @"url": response.URL.absoluteString,
@@ -1370,22 +1630,21 @@ RCTAutoInsetsProtocol>
 
         _onHttpError(httpErrorEvent);
       }
+    }
+    NSString *disposition = nil;
+    if (@available(iOS 13, macOS 10.15, *)) {
+      disposition = [response valueForHTTPHeaderField:@"Content-Disposition"];
+    }
+    BOOL isAttachment = disposition != nil && [disposition hasPrefix:@"attachment"];
+    if (isAttachment || !navigationResponse.canShowMIMEType) {
+      if (_onFileDownload) {
+        policy = WKNavigationResponsePolicyCancel;
 
-      NSString *disposition = nil;
-      if (@available(iOS 13, macOS 10.15, *)) {
-        disposition = [response valueForHTTPHeaderField:@"Content-Disposition"];
-      }
-      BOOL isAttachment = disposition != nil && [disposition hasPrefix:@"attachment"];
-      if (isAttachment || !navigationResponse.canShowMIMEType) {
-        if (_onFileDownload) {
-          policy = WKNavigationResponsePolicyCancel;
-
-          NSMutableDictionary<NSString *, id> *downloadEvent = [self baseEvent];
-          [downloadEvent addEntriesFromDictionary: @{
-            @"downloadUrl": (response.URL).absoluteString,
-          }];
-          _onFileDownload(downloadEvent);
-        }
+        NSMutableDictionary<NSString *, id> *downloadEvent = [self baseEvent];
+        [downloadEvent addEntriesFromDictionary: @{
+          @"downloadUrl": (response.URL).absoluteString,
+        }];
+        _onFileDownload(downloadEvent);
       }
     }
   }
@@ -1543,6 +1802,9 @@ didFinishNavigation:(WKNavigation *)navigation
 {
   UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
   _refreshControl = refreshControl;
+  if(_refreshControlLightMode) {
+    [refreshControl setTintColor:[UIColor whiteColor]];
+  }
   [_webView.scrollView addSubview: refreshControl];
   [refreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents: UIControlEventValueChanged];
 }
@@ -1632,6 +1894,27 @@ didFinishNavigation:(WKNavigation *)navigation
   }
 }
 
+- (void)setInjectedJavaScriptObject:(NSString *)source
+{
+  _injectedJavaScriptObject = source;
+  self.injectedObjectJsonScript = [
+    [WKUserScript alloc]
+    initWithSource: [
+      NSString
+      stringWithFormat:
+       @"window.%@ = window.%@ || {};"
+      "window.%@.injectedObjectJson = function () {"
+      "  return `%@`;"
+      "};", MessageHandlerName, MessageHandlerName, MessageHandlerName, source
+    ]
+    injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+    /* TODO: For a separate (minor) PR: use logic like this (as react-native-wkwebview does) so that messaging can be used in all frames if desired.
+     *       I am keeping it as YES for consistency with previous behaviour. */
+    // forMainFrameOnly:_messagingEnabledForMainFrameOnly
+    forMainFrameOnly:YES
+  ];
+}
+
 - (void)setEnableApplePay:(BOOL)enableApplePay {
     _enableApplePay = enableApplePay;
     if(_webView != nil){
@@ -1670,11 +1953,10 @@ didFinishNavigation:(WKNavigation *)navigation
     initWithSource: [
       NSString
       stringWithFormat:
-        @"window.%@ = {"
-      "  postMessage: function (data) {"
-      "    window.webkit.messageHandlers.%@.postMessage(String(data));"
-      "  }"
-      "};", MessageHandlerName, MessageHandlerName
+       @"window.%@ = window.%@ || {};"
+      "window.%@.postMessage = function (data) {"
+      "  window.webkit.messageHandlers.%@.postMessage(String(data));"
+      "};", MessageHandlerName, MessageHandlerName, MessageHandlerName, MessageHandlerName
     ]
     injectionTime:WKUserScriptInjectionTimeAtDocumentStart
     /* TODO: For a separate (minor) PR: use logic like this (as react-native-wkwebview does) so that messaging can be used in all frames if desired.
@@ -1725,10 +2007,12 @@ didFinishNavigation:(WKNavigation *)navigation
 - (void)resetupScripts:(WKWebViewConfiguration *)wkWebViewConfig {
   [wkWebViewConfig.userContentController removeAllUserScripts];
   [wkWebViewConfig.userContentController removeScriptMessageHandlerForName:MessageHandlerName];
+  [self removeAdditionalMessageHandlers:wkWebViewConfig];
   if(self.enableApplePay){
     if (self.postMessageScript){
       [wkWebViewConfig.userContentController addScriptMessageHandler:[[RNCWeakScriptMessageDelegate alloc] initWithDelegate:self]
                                                                 name:MessageHandlerName];
+      [self addAdditionalMessageHandlers:wkWebViewConfig];
     }
     return;
   }
@@ -1753,8 +2037,47 @@ didFinishNavigation:(WKNavigation *)navigation
                                          "  })\n"
                                          "})(window.history)\n", HistoryShimName
   ];
-  WKUserScript *script = [[WKUserScript alloc] initWithSource:html5HistoryAPIShimSource injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
-  [wkWebViewConfig.userContentController addUserScript:script];
+  WKUserScript *userScript = [[WKUserScript alloc] initWithSource:html5HistoryAPIShimSource injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
+  [wkWebViewConfig.userContentController addUserScript:userScript];
+
+  NSString *serviceWorkerPreventCrashesSource = @"(function() {\n"
+    "    if (!('serviceWorker' in navigator)) {\n"
+    "        Object.defineProperty(navigator, 'serviceWorker', {\n"
+    "            value: {\n"
+    "                register: function(scriptURL, options) {\n"
+    "                    return Promise.resolve({\n"
+    "                        installing: null,\n"
+    "                        waiting: null,\n"
+    "                        active: {\n"
+    "                            scriptURL: scriptURL,\n"
+    "                            state: 'activated'\n"
+    "                        },\n"
+    "                        scope: options?.scope || '/',\n"
+    "                        update: () => Promise.resolve(),\n"
+    "                        unregister: () => Promise.resolve(true)\n"
+    "                    });\n"
+    "                },\n"
+    "                getRegistration: () => Promise.resolve(null),\n"
+    "                getRegistrations: () => Promise.resolve([]),\n"
+    "                ready: Promise.resolve({\n"
+    "                    installing: null,\n"
+    "                    waiting: null,\n"
+    "                    active: null,\n"
+    "                    scope: '/'\n"
+    "                }),\n"
+    "                controller: null,\n"
+    "                addEventListener() {},\n"
+    "                removeEventListener() {}\n"
+    "            },\n"
+    "            configurable: true\n"
+    "        });\n"
+    "    }\n"
+    "})();";
+  WKUserScript *serviceWorkerPreventCrashesScript = [[WKUserScript alloc]
+    initWithSource:serviceWorkerPreventCrashesSource
+    injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+    forMainFrameOnly:NO];
+  [wkWebViewConfig.userContentController addUserScript:serviceWorkerPreventCrashesScript];
 
   if(_sharedCookiesEnabled) {
     // More info to sending cookies with WKWebView
@@ -1766,9 +2089,7 @@ didFinishNavigation:(WKNavigation *)navigation
       if(!_incognito && !_cacheEnabled) {
         wkWebViewConfig.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
       }
-      [self syncCookiesToWebView:^{
-        [wkWebViewConfig.websiteDataStore.httpCookieStore addObserver:self];
-      }];
+      [self syncCookiesToWebView:^{}];
     } else {
       NSMutableString *script = [NSMutableString string];
 
@@ -1822,15 +2143,22 @@ didFinishNavigation:(WKNavigation *)navigation
     if (self.postMessageScript){
       [wkWebViewConfig.userContentController addScriptMessageHandler:[[RNCWeakScriptMessageDelegate alloc] initWithDelegate:self]
                                                                 name:MessageHandlerName];
+      [self addAdditionalMessageHandlers:wkWebViewConfig];
       [wkWebViewConfig.userContentController addUserScript:self.postMessageScript];
     }
     if (self.atEndScript) {
       [wkWebViewConfig.userContentController addUserScript:self.atEndScript];
     }
+    if (self.iframeDetectorScript) {
+      [wkWebViewConfig.userContentController addUserScript:self.iframeDetectorScript];
+  	}
   }
   // Whether or not messaging is enabled, add the startup script if it exists.
   if (self.atStartScript) {
     [wkWebViewConfig.userContentController addUserScript:self.atStartScript];
+  }
+  if (self.injectedObjectJsonScript) {
+    [wkWebViewConfig.userContentController addUserScript:self.injectedObjectJsonScript];
   }
 }
 
@@ -1853,6 +2181,129 @@ didFinishNavigation:(WKNavigation *)navigation
   }
   return request;
 }
+
+- (void)handleBlobDownloadUrl:(NSString *)urlString {
+  NSString *serializedUrl = RNCJavaScriptJSONLiteral(urlString);
+  if (serializedUrl == nil) {
+    NSLog(@"Error downloading blob: failed to serialize URL");
+    return;
+  }
+  NSString *jsCode = [NSString stringWithFormat:
+     @"var xhr = new XMLHttpRequest();"
+     "xhr.open('GET', %@, true);"
+     "xhr.responseType = 'blob';"
+     "xhr.onload = function(e) {"
+     "    if (this.status == 200) {"
+      "        var blobFile = this.response;"
+      "        var reader = new FileReader();"
+      "        reader.readAsDataURL(blobFile);"
+      "        reader.onloadend = function() {"
+      "            var base64 = reader.result;"
+      "            window.webkit.messageHandlers.base64Handler.postMessage(base64);"
+      "        };"
+      "    }"
+      "};"
+      "xhr.send();", serializedUrl];
+  [self.webView evaluateJavaScript:jsCode completionHandler:^(id result, NSError *error) {}];
+}
+
+- (BOOL)isDownloadableFileURL:(NSURL *)url {
+    if (!url || !url.pathExtension) {
+        return NO;
+    }
+    
+    NSString *extension = [url.pathExtension lowercaseString];
+    NSSet *downloadableExtensions = [NSSet setWithObjects:
+        @"pdf", @"doc", @"docx", @"xls", @"xlsx", @"ppt", @"pptx", // Documents
+        @"txt", @"rtf", @"csv", @"json", @"xml",                   // Text files
+        @"zip", @"rar", @"7z", @"tar", @"gz",                      // Archives
+        @"mp3", @"wav", @"m4a", @"aac", @"flac",                   // Audio
+        @"mp4", @"avi", @"mov", @"wmv", @"mkv", @"webm",           // Video
+        nil
+    ];
+    
+    return [downloadableExtensions containsObject:extension];
+}
+
+- (void)handleRegularFileDownload:(NSString *)urlString {
+    NSString *serializedUrl = RNCJavaScriptJSONLiteral(urlString);
+    if (serializedUrl == nil) {
+        NSLog(@"Error downloading file: failed to serialize URL");
+        return;
+    }
+    NSString *jsCode = [NSString stringWithFormat:
+        @"fetch(%@)"
+        ".then(response => {"
+        "    if (!response.ok) throw new Error('Unable to download file');"
+        "    return response.blob();"
+        "})"
+        ".then(blob => {"
+        "    const reader = new FileReader();"
+        "    reader.onloadend = function() {"
+        "        window.webkit.messageHandlers.base64Handler.postMessage(reader.result);"
+        "    };"
+        "    reader.readAsDataURL(blob);"
+        "})"
+        ".catch(error => {"
+        "    console.error('Download failed:', error);"
+        "});", serializedUrl];
+    
+    [self.webView evaluateJavaScript:jsCode completionHandler:^(id result, NSError *error) {
+        if (error) {
+            NSLog(@"Error downloading file: %@", error.localizedDescription);
+        }
+    }];
+}
+
+- (void)showDownloadAlert:(NSString *)fileExtension
+           invokeDownload:(void (^)(void))invokeDownload {
+    NSString *title =
+        [NSString stringWithFormat:@"Do you want to download File.%@?",
+                                   fileExtension ?: @""];
+
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:title
+                         message:nil
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *cancelAction =
+        [UIAlertAction actionWithTitle:@"Cancel"
+                                 style:UIAlertActionStyleCancel
+                               handler:nil];
+
+    UIAlertAction *downloadAction =
+        [UIAlertAction actionWithTitle:@"Download"
+                                 style:UIAlertActionStyleDefault
+                               handler:^(UIAlertAction *_Nonnull action) {
+                                 if (invokeDownload) {
+                                     invokeDownload();
+                                 }
+                               }];
+
+    [alert addAction:cancelAction];
+    [alert addAction:downloadAction];
+
+    UIViewController *rootViewController =
+        [UIApplication sharedApplication].keyWindow.rootViewController;
+    if (rootViewController) {
+        [rootViewController presentViewController:alert
+                                         animated:YES
+                                       completion:nil];
+    } else {
+        NSLog(@"Error: No root view controller to present alert");
+    }
+
+    // Disable download button initially to prevent Tap jacking
+    downloadAction.enabled = NO;
+
+    // Enable button after 500ms
+    dispatch_after(
+        dispatch_time(DISPATCH_TIME_NOW, (int64_t)(500 * NSEC_PER_MSEC)),
+        dispatch_get_main_queue(), ^{
+          downloadAction.enabled = YES;
+        });
+}
+
 
 @end
 

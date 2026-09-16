@@ -38,6 +38,7 @@ This document lays out the current public properties and methods for the React N
 - [`domStorageEnabled`](Reference.md#domstorageenabled)
 - [`javaScriptEnabled`](Reference.md#javascriptenabled)
 - [`javaScriptCanOpenWindowsAutomatically`](Reference.md#javascriptcanopenwindowsautomatically)
+- [`suppressJavaScriptDialogs`](Reference.md#suppressjavascriptdialogs)
 - [`androidLayerType`](Reference.md#androidLayerType)
 - [`mixedContentMode`](Reference.md#mixedcontentmode)
 - [`thirdPartyCookiesEnabled`](Reference.md#thirdpartycookiesenabled)
@@ -45,6 +46,7 @@ This document lays out the current public properties and methods for the React N
 - [`applicationNameForUserAgent`](Reference.md#applicationNameForUserAgent)
 - [`allowsFullscreenVideo`](Reference.md#allowsfullscreenvideo)
 - [`allowsInlineMediaPlayback`](Reference.md#allowsinlinemediaplayback)
+- [`allowsPictureInPictureMediaPlayback`](Reference.md#allowsPictureInPictureMediaPlayback)
 - [`allowsAirPlayForMediaPlayback`](Reference.md#allowsAirPlayForMediaPlayback)
 - [`bounces`](Reference.md#bounces)
 - [`overScrollMode`](Reference.md#overscrollmode)
@@ -74,6 +76,7 @@ This document lays out the current public properties and methods for the React N
 - [`sharedCookiesEnabled`](Reference.md#sharedCookiesEnabled)
 - [`textZoom`](Reference.md#textZoom)
 - [`pullToRefreshEnabled`](Reference.md#pullToRefreshEnabled)
+- [`refreshControlLightMode`](Reference.md#refreshControlLightMode)
 - [`ignoreSilentHardwareSwitch`](Reference.md#ignoreSilentHardwareSwitch)
 - [`onFileDownload`](Reference.md#onFileDownload)
 - [`limitsNavigationsToAppBoundDomains`](Reference.md#limitsNavigationsToAppBoundDomains)
@@ -84,13 +87,16 @@ This document lays out the current public properties and methods for the React N
 - [`setSupportMultipleWindows`](Reference.md#setSupportMultipleWindows)
 - [`basicAuthCredential`](Reference.md#basicAuthCredential)
 - [`enableApplePay`](Reference.md#enableApplePay)
+- [`additionalMessageHandlerNames`](Reference.md#additionalMessageHandlerNames)
 - [`forceDarkOn`](Reference.md#forceDarkOn)
 - [`useWebView2`](Reference.md#useWebView2)
 - [`minimumFontSize`](Reference.md#minimumFontSize)
 - [`downloadingMessage`](Reference.md#downloadingMessage)
 - [`lackPermissionToDownloadMessage`](Reference.md#lackPermissionToDownloadMessage)
+- [`allowFileDownloads`](Reference.md#allowfiledownloads)
 - [`allowsProtectedMedia`](Reference.md#allowsProtectedMedia)
 - [`webviewDebuggingEnabled`](Reference.md#webviewDebuggingEnabled)
+- [`paymentRequestEnabled`](Reference.md#paymentRequestEnabled)
 
 ## Methods Index
 
@@ -257,7 +263,7 @@ Inject any JavaScript object into the webview so it is available to the JS runni
 
 | Type | Required | Platform                                          |
 | ---- | -------- | ------------------------------------------------- |
-| obj | No       | Android only |
+| obj | No       | iOS, Android |
 
 Example:
 
@@ -923,6 +929,16 @@ A Boolean value indicating whether JavaScript can open windows without user inte
 
 ---
 
+### `suppressJavaScriptDialogs`[⬆](#props-index)
+
+Boolean value to suppress JavaScript dialogs (alert/confirm/prompt). The default value is `false`.
+
+| Type | Required | Platform |
+| ---- | -------- | -------- |
+| bool | No       | Android, iOS |
+
+---
+
 ### `androidLayerType`[⬆](#props-index)
 
 Specifies the layer type.
@@ -1017,6 +1033,21 @@ Boolean that determines whether HTML5 videos play inline or use the native full-
 | bool | No       | iOS      |
 
 ---
+
+### `allowsPictureInPictureMediaPlayback`[⬆](#props-index)
+
+Boolean value that indicates whether HTML5 videos can play Picture in Picture. The default value is `false`.
+
+> **NOTE**
+>
+> In order to restrict playing video in picture in picture mode this props need to be set to `false`.
+
+| Type | Required | Platform |
+| ---- | -------- | -------- |
+| bool | No       | iOS      |
+
+---
+
 ### `allowsAirPlayForMediaPlayback`[⬆](#props-index)
 
 A Boolean value indicating whether AirPlay is allowed. The default value is `false`.
@@ -1378,6 +1409,16 @@ Boolean value that determines whether a pull to refresh gesture is available in 
 | ------- | -------- | -------- |
 | boolean | No       | iOS      |
 
+### `refreshControlLightMode`[⬆](#props-index)
+
+(ios only)
+Boolean value that determines whether the refresh control color is white or not.
+Default is `false`, meaning the refresh control color will be the default.
+
+| Type    | Required | Platform |
+| ------- | -------- | -------- |
+| boolean | No       | iOS      |
+
 ### `ignoreSilentHardwareSwitch`[⬆](#props-index)
 
 (ios only)
@@ -1559,6 +1600,26 @@ Example:
 <WebView enableApplePay={true} />
 ```
 
+### `additionalMessageHandlerNames`[⬆](#props-index)
+
+Extra names to register as native `WKScriptMessageHandler`s next to the built-in `ReactNativeWebView` one. A page can call `window.webkit.messageHandlers.<name>.postMessage(...)` and the message arrives on [`onMessage`](Reference.md#onmessage) exactly like a `ReactNativeWebView` message. Non-string bodies are serialized to JSON so `event.nativeEvent.data` is always a string.
+
+Native handlers keep working when [`enableApplePay`](Reference.md#enableApplePay) is `true`, which removes every injected script, so this is the way to receive events from third-party checkout pages that post to their own handler name. Only messages from the main frame are delivered. The handlers are registered when the WebView is created, so pass the prop on mount.
+
+| Type     | Required | Default | Platform |
+| -------- | -------- | ------- | -------- |
+| string[] | No       | none    | iOS      |
+
+Example:
+
+```javascript
+<WebView
+  enableApplePay
+  additionalMessageHandlerNames={['cbOnramp']}
+  onMessage={(event) => console.log(event.nativeEvent.data)}
+/>
+```
+
 ### `forceDarkOn`[⬆](#props-index)
 
 Configuring Dark Theme
@@ -1665,6 +1726,14 @@ This is the message that is shown in the Toast when the webview is unable to dow
 | ------ | -------- | -------- |
 | string | No       | Android  |
 
+### `allowFileDownloads`[⬆](#props-index)
+
+Boolean value to control whether file downloads are allowed. The default value is `true`.
+
+| Type | Required | Platform |
+| ---- | -------- | -------- |
+| bool | No       | Android  |
+
 ### `allowsProtectedMedia`[⬆](#props-index)
 
 Whether or not the Webview can play media protected by DRM. Default is `false`.
@@ -1690,6 +1759,15 @@ Default is `false`. Supported on iOS as of 16.4, previous versions always allow 
 | Type    | Required | Platform |
 | ------- | -------- | -------- |
 | boolean | No       | iOS & Android  |
+
+### `paymentRequestEnabled`[⬆](#props-index)
+
+Whether or not the webview has the Payment Request API enabled. Default is `false`.
+This is needed for Google Pay to work within the WebView.
+
+| Type    | Required | Platform |
+| ------- | -------- | -------- |
+| boolean | No       | Android  |
 
 ## Methods
 
@@ -1770,6 +1848,8 @@ clearCache(true);
 Clears the resource cache. Note that the cache is per-application, so this will clear the cache for all WebViews used. [developer.android.com reference](<https://developer.android.com/reference/android/webkit/WebView.html#clearCache(boolean)>)
 
 In iOS, includeDiskFiles will also remove data from the web storages and databases.[developer.apple.com reference](https://developer.apple.com/documentation/webkit/wkwebsitedatastore/1532936-removedata)
+
+In Windows, this has been set to clear cookies, since there is no way to clear the cache in WebView2 because it is shared with Edge. The best we can do is clear the cookies, because we cannot access history or local storage.
 
 ### `clearHistory()`[⬆](#methods-index)
 

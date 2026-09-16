@@ -1,5 +1,3 @@
-/* eslint-disable react/no-multi-comp, max-classes-per-file */
-
 import { ReactElement, Component, ComponentProps } from 'react';
 import {
   NativeSyntheticEvent,
@@ -11,7 +9,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 
-import type NativeWebViewComponent from './RNCWebViewNativeComponent'
+import type NativeWebViewComponent from './RNCWebViewNativeComponent';
 
 type WebViewCommands =
   | 'goForward'
@@ -57,16 +55,13 @@ interface ErrorState extends BaseState {
 
 export type State = NormalState | ErrorState;
 
-// eslint-disable-next-line @typescript-eslint/no-type-alias, @typescript-eslint/no-explicit-any
 type Constructor<T> = new (...args: any[]) => T;
 
-// eslint-disable-next-line react/prefer-stateless-function
 declare class NativeWebViewMacOSComponent extends Component<MacOSNativeWebViewProps> {}
 declare const NativeWebViewMacOSBase: Constructor<NativeMethodsMixin> &
   typeof NativeWebViewMacOSComponent;
 export class NativeWebViewMacOS extends NativeWebViewMacOSBase {}
 
-// eslint-disable-next-line react/prefer-stateless-function
 declare class NativeWebViewWindowsComponent extends Component<WindowsNativeWebViewProps> {}
 declare const NativeWebViewWindowsBase: Constructor<NativeMethodsMixin> &
   typeof NativeWebViewWindowsComponent;
@@ -237,19 +232,19 @@ export interface WebViewCustomMenuItems {
   label: string;
 }
 
-export declare type SuppressMenuItem = 
-  | "cut"
-  | "copy"
-  | "paste"
-  | "replace"
-  | "bold"
-  | "italic"
-  | "underline"
-  | "select"
-  | "selectAll"
-  | "translate"
-  | "lookup"
-  | "share";
+export declare type SuppressMenuItem =
+  | 'cut'
+  | 'copy'
+  | 'paste'
+  | 'replace'
+  | 'bold'
+  | 'italic'
+  | 'underline'
+  | 'select'
+  | 'selectAll'
+  | 'translate'
+  | 'lookup'
+  | 'share';
 
 export type WebViewSource = WebViewSourceUri | WebViewSourceHtml;
 
@@ -261,9 +256,7 @@ export interface WebViewNativeConfig {
   /**
    * The native component used to render the WebView.
    */
-  component?:
-    | typeof NativeWebViewMacOS
-    | typeof NativeWebViewComponent;
+  component?: typeof NativeWebViewMacOS | typeof NativeWebViewComponent;
   /**
    * Set props directly on the native component WebView. Enables custom props which the
    * original WebView doesn't pass through.
@@ -277,7 +270,7 @@ export interface WebViewNativeConfig {
 }
 
 export type OnShouldStartLoadWithRequest = (
-  event: ShouldStartLoadRequest,
+  event: ShouldStartLoadRequest
 ) => boolean;
 
 export interface BasicAuthCredential {
@@ -313,8 +306,9 @@ export interface CommonNativeWebViewProps extends ViewProps {
   onShouldStartLoadWithRequest: (event: ShouldStartLoadRequestEvent) => void;
   showsHorizontalScrollIndicator?: boolean;
   showsVerticalScrollIndicator?: boolean;
+  paymentRequestEnabled?: boolean;
   // TODO: find a better way to type this.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   source: any;
   userAgent?: string;
   /**
@@ -345,6 +339,7 @@ export interface MacOSNativeWebViewProps extends CommonNativeWebViewProps {
   allowUniversalAccessFromFileURLs?: boolean;
   allowsBackForwardNavigationGestures?: boolean;
   allowsInlineMediaPlayback?: boolean;
+  allowsPictureInPictureMediaPlayback?: boolean;
   allowsAirPlayForMediaPlayback?: boolean;
   allowsLinkPreview?: boolean;
   automaticallyAdjustContentInsets?: boolean;
@@ -362,10 +357,37 @@ export interface MacOSNativeWebViewProps extends CommonNativeWebViewProps {
 
 export interface WindowsNativeWebViewProps extends CommonNativeWebViewProps {
   testID?: string;
+  linkHandlingEnabled?: boolean;
+  onOpenWindow?: (event: WebViewOpenWindowEvent) => void;
+  onSourceChanged?: (event: WebViewNavigationEvent) => void;
 }
 
 export interface WindowsWebViewProps extends WebViewSharedProps {
+  /**
+   * Boolean value that detenmines whether the web view should use the new chromium based edge webview.
+   */
   useWebView2?: boolean;
+  /**
+   * Function that is invoked when the `WebView` should open a new window.
+   *
+   * This happens when the JS calls `window.open('http://someurl', '_blank')`
+   * or when the user clicks on a `<a href="http://someurl" target="_blank">` link.
+   *
+   * Only works with `useWebView2` set to `true`.
+   *
+   * @platform windows
+   */
+  onOpenWindow?: (event: WebViewOpenWindowEvent) => void;
+
+  /**
+   * Function that is invoked when the `WebView` responds to a request to load a new resource.
+   * Works only on Windows.
+   *
+   * Only works with `useWebView2` set to `true`.
+   *
+   * @platform windows
+   */
+  onSourceChanged?: (event: WebViewNavigationEvent) => void;
 }
 
 export interface IOSWebViewProps extends WebViewSharedProps {
@@ -486,6 +508,13 @@ export interface IOSWebViewProps extends WebViewSharedProps {
    */
   allowsInlineMediaPlayback?: boolean;
   /**
+   * Boolean value that indicates whether HTML5 videos can play Picture in Picture.
+   * The default value is `true`.
+   *
+   * @platform macos
+   */
+  allowsPictureInPictureMediaPlayback?: boolean;
+  /**
    * A Boolean value indicating whether AirPlay is allowed. The default value is `false`.
    * @platform ios
    */
@@ -600,7 +629,7 @@ export interface IOSWebViewProps extends WebViewSharedProps {
 
   /**
    * Function that is invoked when the `WebView` should open a new window.
-   * 
+   *
    * This happens when the JS calls `window.open('http://someurl', '_blank')`
    * or when the user clicks on a `<a href="http://someurl" target="_blank">` link.
    *
@@ -630,6 +659,15 @@ export interface IOSWebViewProps extends WebViewSharedProps {
    *
    */
   pullToRefreshEnabled?: boolean;
+
+  /**
+   * Boolean value that determines whether a pull to refresh gesture is
+   * available in the `WebView`. The default value is `false`.
+   * If `true`, sets `bounces` automatically to `true`
+   * @platform ios
+   *
+   */
+  refreshControlLightMode?: boolean;
 
   /**
    * Function that is invoked when the client needs to download a file.
@@ -692,6 +730,19 @@ export interface IOSWebViewProps extends WebViewSharedProps {
   enableApplePay?: boolean;
 
   /**
+   * Extra names to register as native WKScriptMessageHandlers next to the
+   * built-in `ReactNativeWebView` one. A page can then call
+   * `window.webkit.messageHandlers.<name>.postMessage(...)` and the message
+   * arrives on `onMessage` exactly like a `ReactNativeWebView` message
+   * (non-string bodies are serialized to JSON). Native handlers keep working
+   * when `enableApplePay` is true, which removes every injected script, so
+   * this is the way to receive events from third-party checkout pages that
+   * post to their own handler name (for example Coinbase Onramp's `cbOnramp`).
+   * @platform ios
+   */
+  additionalMessageHandlerNames?: string[];
+
+  /**
    * An array of objects which will be shown when selecting text. An empty array will suppress the menu.
    * These will appear after a long press to select text.
    * @platform ios, android
@@ -711,11 +762,12 @@ export interface IOSWebViewProps extends WebViewSharedProps {
    * `selectedText`: the text selected on the document
    * @platform ios, android
    */
-  onCustomMenuSelection?: (event: {nativeEvent: {
-    label: string;
-    key: string;
-    selectedText: string;
-  }
+  onCustomMenuSelection?: (event: {
+    nativeEvent: {
+      label: string;
+      key: string;
+      selectedText: string;
+    };
   }) => void;
 
   /**
@@ -786,6 +838,13 @@ export interface MacOSWebViewProps extends WebViewSharedProps {
    * @platform macos
    */
   allowsInlineMediaPlayback?: boolean;
+  /**
+   * Boolean value that indicates whether HTML5 videos can play Picture in Picture.
+   * The default value is `true`.
+   *
+   * @platform ios
+   */
+  allowsPictureInPictureMediaPlayback?: boolean;
   /**
    * A Boolean value indicating whether AirPlay is allowed. The default value is `false`.
    * @platform macos
@@ -896,7 +955,7 @@ export interface AndroidWebViewProps extends WebViewSharedProps {
 
   /**
    * Function that is invoked when the `WebView` should open a new window.
-   * 
+   *
    * This happens when the JS calls `window.open('http://someurl', '_blank')`
    * or when the user clicks on a `<a href="http://someurl" target="_blank">` link.
    *
@@ -918,7 +977,7 @@ export interface AndroidWebViewProps extends WebViewSharedProps {
   cacheMode?: CacheMode;
 
   /**
-   * https://developer.android.com/reference/android/view/View#OVER_SCROLL_NEVER
+   * https://developer.android.com/reference/android/view/View#setOverScrollMode(int)
    * Sets the overScrollMode. Possible values are:
    *
    * - `'always'` (default)
@@ -1095,6 +1154,13 @@ export interface AndroidWebViewProps extends WebViewSharedProps {
   lackPermissionToDownloadMessage?: string;
 
   /**
+   * Boolean value to control whether file downloads are allowed.
+   * The default value is `true`.
+   * @platform android
+   */
+  allowFileDownloads?: boolean;
+
+  /**
    * Boolean value to control whether webview can play media protected by DRM.
    * Default is false.
    * @platform android
@@ -1122,6 +1188,13 @@ export interface WebViewSharedProps extends ViewProps {
   javaScriptCanOpenWindowsAutomatically?: boolean;
 
   /**
+   * Boolean value to suppress JavaScript dialogs (alert/confirm/prompt).
+   * The default value is `false`.
+   * @platform android, ios
+   */
+  suppressJavaScriptDialogs?: boolean;
+
+  /**
    * Stylesheet object to set the style of the container view.
    */
   containerStyle?: StyleProp<ViewStyle>;
@@ -1132,7 +1205,7 @@ export interface WebViewSharedProps extends ViewProps {
   renderError?: (
     errorDomain: string | undefined,
     errorCode: number,
-    errorDesc: string,
+    errorDesc: string
   ) => ReactElement; // view to show if there's an error
 
   /**
@@ -1143,7 +1216,7 @@ export interface WebViewSharedProps extends ViewProps {
   /**
    * Function that is invoked when the `WebView` scrolls.
    */
-   onScroll?: ComponentProps<typeof NativeWebViewComponent>['onScroll'];
+  onScroll?: ComponentProps<typeof NativeWebViewComponent>['onScroll'];
 
   /**
    * Function that is invoked when the `WebView` has finished loading.
@@ -1279,9 +1352,14 @@ export interface WebViewSharedProps extends ViewProps {
    * Inject a JavaScript object to be accessed as a JSON string via JavaScript in the WebView.
    */
   injectedJavaScriptObject?: object;
-  
+
   /**
    * Enables WebView remote debugging using Chrome (Android) or Safari (iOS).
    */
   webviewDebuggingEnabled?: boolean;
+
+  /**
+   * Enables support for the Payment Request API for the WebView
+   */
+  paymentRequestEnabled?: boolean;
 }

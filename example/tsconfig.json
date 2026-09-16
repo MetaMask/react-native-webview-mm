@@ -1,0 +1,11 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@metamask/react-native-webview": ["../src/index"],
+      "react-native-webview": ["../src/index"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

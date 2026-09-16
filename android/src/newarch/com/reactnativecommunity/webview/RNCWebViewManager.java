@@ -41,7 +41,7 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
 
     public RNCWebViewManager() {
         mDelegate = new RNCWebViewManagerDelegate<>(this);
-        mRNCWebViewManagerImpl = new RNCWebViewManagerImpl();
+        mRNCWebViewManagerImpl = new RNCWebViewManagerImpl(true);
     }
 
     @Nullable
@@ -208,9 +208,21 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
     }
 
     @Override
+    @ReactProp(name = "allowFileDownloads", defaultBoolean = true)
+    public void setAllowFileDownloads(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setAllowFileDownloads(view, value);
+    }
+
+    @Override
     @ReactProp(name = "hasOnOpenWindowEvent")
     public void setHasOnOpenWindowEvent(RNCWebViewWrapper view, boolean hasEvent) {
         mRNCWebViewManagerImpl.setHasOnOpenWindowEvent(view, hasEvent);
+    }
+
+    @Override
+    @ReactProp(name = "suppressJavaScriptDialogs")
+    public void setSuppressJavaScriptDialogs(RNCWebViewWrapper view, boolean suppress) {
+        mRNCWebViewManagerImpl.setSuppressJavaScriptDialogs(view, suppress);
     }
 
     @Override
@@ -310,7 +322,7 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
     @Override
     @ReactProp(name = "newSource")
     public void setNewSource(RNCWebViewWrapper view, @Nullable ReadableMap value) {
-        mRNCWebViewManagerImpl.setSource(view, value, true);
+        mRNCWebViewManagerImpl.setSource(view, value);
     }
 
     @Override
@@ -331,6 +343,12 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
         mRNCWebViewManagerImpl.setWebviewDebuggingEnabled(view, value);
     }
 
+    @Override
+    @ReactProp(name = "paymentRequestEnabled")
+    public void setPaymentRequestEnabled(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setPaymentRequestEnabled(view, value);
+    }
+
     /* iOS PROPS - no implemented here */
     @Override
     public void setAllowingReadAccessToURL(RNCWebViewWrapper view, @Nullable String value) {}
@@ -340,6 +358,9 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
 
     @Override
     public void setAllowsInlineMediaPlayback(RNCWebViewWrapper view, boolean value) {}
+
+    @Override
+    public void setAllowsPictureInPictureMediaPlayback(RNCWebViewWrapper view, boolean value) {}
 
     @Override
     public void setAllowsAirPlayForMediaPlayback(RNCWebViewWrapper view, boolean value) {}
@@ -378,6 +399,9 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
     public void setEnableApplePay(RNCWebViewWrapper view, boolean value) {}
 
     @Override
+    public void setAdditionalMessageHandlerNames(RNCWebViewWrapper view, @Nullable ReadableArray value) {}
+
+    @Override
     public void setHideKeyboardAccessoryView(RNCWebViewWrapper view, boolean value) {}
 
     @Override
@@ -388,6 +412,9 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
 
     @Override
     public void setPullToRefreshEnabled(RNCWebViewWrapper view, boolean value) {}
+
+    @Override
+    public void setRefreshControlLightMode(RNCWebViewWrapper view, boolean value) {}
 
     @Override
     public void setScrollEnabled(RNCWebViewWrapper view, boolean value) {}
@@ -420,7 +447,6 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
         mRNCWebViewManagerImpl.setUserAgent(view, value);
     }
 
-    // These will never be called because we use the shared impl for now
   @Override
   public void goBack(RNCWebViewWrapper view) {
     view.getWebView().goBack();
@@ -493,7 +519,6 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
   public void clearHistory(RNCWebViewWrapper view) {
       view.getWebView().clearHistory();
   }
-  // !These will never be called
 
   @Override
     protected void addEventEmitters(@NonNull ThemedReactContext reactContext, RNCWebViewWrapper view) {
@@ -532,8 +557,13 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper>
 
     @Override
     public void receiveCommand(@NonNull RNCWebViewWrapper reactWebView, String commandId, @Nullable ReadableArray args) {
-        mRNCWebViewManagerImpl.receiveCommand(reactWebView, commandId, args);
         super.receiveCommand(reactWebView, commandId, args);
+    }
+
+    @Override
+    protected void onAfterUpdateTransaction(@NonNull RNCWebViewWrapper view) {
+        super.onAfterUpdateTransaction(view);
+        mRNCWebViewManagerImpl.onAfterUpdateTransaction(view);
     }
 
     @Override

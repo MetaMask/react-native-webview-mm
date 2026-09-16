@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -18,8 +18,11 @@ import Uploads from './examples/Uploads';
 import Injection from './examples/Injection';
 import LocalPageLoad from './examples/LocalPageLoad';
 import Messaging from './examples/Messaging';
+import MultiMessaging from './examples/MultiMessaging';
 import NativeWebpage from './examples/NativeWebpage';
 import ApplePay from './examples/ApplePay';
+import AdditionalMessageHandlers from './examples/AdditionalMessageHandlers';
+import GooglePay from './examples/GooglePay';
 import CustomMenu from './examples/CustomMenu';
 import OpenWindow from './examples/OpenWindow';
 import SuppressMenuItems from './examples/Suppress';
@@ -32,6 +35,14 @@ const TESTS = {
     description: 'js-webview postMessage messaging test',
     render() {
       return <Messaging />;
+    },
+  },
+  MultiMessaging: {
+    title: 'MultiMessaging',
+    testId: 'multimessaging',
+    description: 'Multi js-webview postMessage messaging test',
+    render() {
+      return <MultiMessaging />;
     },
   },
   Alerts: {
@@ -114,6 +125,23 @@ const TESTS = {
       return <ApplePay />;
     },
   },
+  AdditionalMessageHandlers: {
+    title: 'Additional message handlers ',
+    testId: 'AdditionalMessageHandlers',
+    description:
+      'Native message handler names forwarded to onMessage while Apple Pay is enabled',
+    render() {
+      return <AdditionalMessageHandlers />;
+    },
+  },
+  GooglePay: {
+    title: 'Google Pay ',
+    testId: 'GooglePay',
+    description: 'Test to open a Google Pay supported page',
+    render() {
+      return <GooglePay />;
+    },
+  },
   CustomMenu: {
     title: 'Custom Menu',
     testId: 'CustomMenu',
@@ -136,12 +164,15 @@ const TESTS = {
     description: 'SuppressMenuItems in editable content',
     render() {
       return <SuppressMenuItems />;
-    }
-  }
+    },
+  },
 };
 
 interface Props {}
-interface State {restarting: boolean; currentTest: Object}
+interface State {
+  restarting: boolean;
+  currentTest: Object;
+}
 
 export default class App extends Component<Props, State> {
   state = {
@@ -150,15 +181,17 @@ export default class App extends Component<Props, State> {
   };
 
   _simulateRestart = () => {
-    this.setState({restarting: true}, () => this.setState({restarting: false}));
+    this.setState({ restarting: true }, () =>
+      this.setState({ restarting: false })
+    );
   };
 
   _changeTest = (testName) => {
-    this.setState({currentTest: TESTS[testName]});
+    this.setState({ currentTest: TESTS[testName] });
   };
 
   render() {
-    const {restarting, currentTest} = this.state;
+    const { restarting, currentTest } = this.state;
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity
@@ -171,7 +204,8 @@ export default class App extends Component<Props, State> {
           testID="restart_button"
           onPress={this._simulateRestart}
           style={styles.restartButton}
-          activeOpacity={0.6}>
+          activeOpacity={0.6}
+        >
           <Text>Simulate Restart</Text>
         </TouchableOpacity>
 
@@ -219,16 +253,35 @@ export default class App extends Component<Props, State> {
             onPress={() => this._changeTest('Messaging')}
           />
           <Button
+            testID="testType_multimessaging"
+            title="MultiMessaging"
+            onPress={() => this._changeTest('MultiMessaging')}
+          />
+          <Button
             testID="testType_nativeWebpage"
             title="NativeWebpage"
             onPress={() => this._changeTest('NativeWebpage')}
           />
           {Platform.OS === 'ios' && (
-              <Button
-                  testID="testType_applePay"
-                  title="ApplePay"
-                  onPress={() => this._changeTest('ApplePay')}
-              />
+            <Button
+              testID="testType_applePay"
+              title="ApplePay"
+              onPress={() => this._changeTest('ApplePay')}
+            />
+          )}
+          {Platform.OS === 'ios' && (
+            <Button
+              testID="testType_additionalMessageHandlers"
+              title="MessageHandlers"
+              onPress={() => this._changeTest('AdditionalMessageHandlers')}
+            />
+          )}
+          {Platform.OS === 'android' && (
+            <Button
+              testID="testType_googlePay"
+              title="GooglePay"
+              onPress={() => this._changeTest('GooglePay')}
+            />
           )}
           <Button
             testID="testType_customMenu"
@@ -256,7 +309,8 @@ export default class App extends Component<Props, State> {
           <View
             testID={`example-${currentTest.testId}`}
             key={currentTest.title}
-            style={styles.exampleContainer}>
+            style={styles.exampleContainer}
+          >
             <Text style={styles.exampleTitle}>{currentTest.title}</Text>
             <Text style={styles.exampleDescription}>
               {currentTest.description}

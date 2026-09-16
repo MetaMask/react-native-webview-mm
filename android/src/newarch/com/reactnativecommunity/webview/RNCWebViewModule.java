@@ -11,7 +11,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.module.annotations.ReactModule;
 
 @ReactModule(name = RNCWebViewModuleImpl.NAME)
-public class RNCWebViewModule extends NativeRNCWebViewSpec {
+public class RNCWebViewModule extends NativeRNCWebViewModuleSpec {
     final private RNCWebViewModuleImpl mRNCWebViewModuleImpl;
 
     public RNCWebViewModule(ReactApplicationContext reactContext) {
@@ -41,6 +41,9 @@ public class RNCWebViewModule extends NativeRNCWebViewSpec {
         mRNCWebViewModuleImpl.setDownloadRequest(request);
     }
 
+	public void setBase64DownloadRequest(String base64) {
+		mRNCWebViewModuleImpl.setBase64DownloadRequest(base64);
+	}
     public void downloadFile(String downloadingMessage) {
         mRNCWebViewModuleImpl.downloadFile(downloadingMessage);
     }

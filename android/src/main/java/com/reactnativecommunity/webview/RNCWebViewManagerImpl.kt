@@ -1,8 +1,6 @@
 package com.reactnativecommunity.webview
 
-import android.app.AlertDialog
 import android.app.DownloadManager
-import android.content.DialogInterface
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -25,6 +23,10 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.common.MapBuilder
 import com.facebook.react.common.build.ReactBuildConfig
 import com.facebook.react.uimanager.ThemedReactContext
+import com.reactnativecommunity.webview.extension.file.Base64FileDownloader
+import com.reactnativecommunity.webview.extension.file.BlobFileDownloader
+import com.reactnativecommunity.webview.extension.file.TapjackingPreventionAlertDialog
+import com.reactnativecommunity.webview.extension.file.addBlobFileDownloaderJavascriptInterface
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.UnsupportedEncodingException
@@ -35,7 +37,7 @@ import java.util.Locale
 
 val invalidCharRegex = "[\\\\/%\"]".toRegex()
 
-class RNCWebViewManagerImpl {
+class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
     companion object {
         const val NAME = "RNCWebView"
     }
@@ -47,6 +49,7 @@ class RNCWebViewManagerImpl {
     private var mDownloadingMessage: String? = null
     private var mLackPermissionToDownloadMessage: String? = null
     private var mHasOnOpenWindowEvent = false
+    private var mPendingSource: ReadableMap? = null
 
     private var mUserAgent: String? = null
     private var mUserAgentWithApplicationName: String? = null
@@ -98,9 +101,38 @@ class RNCWebViewManagerImpl {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             webView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
         }
-        webView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+		    val base64DownloaderRequestFilePermission = { base64: String ->
+			    	if (webView.allowFileDownloads) {
+			    	    webView.reactApplicationContext.getNativeModule(RNCWebViewModule::class.java)?.let { module ->
+				    		    module.setBase64DownloadRequest(base64)
+				    		    module.grantFileDownloaderPermissions(getDownloadingMessageOrDefault(), getLackPermissionToDownloadMessageOrDefault())
+			    	    }
+			    	}
+						Unit
+		    }
+		    webView.addBlobFileDownloaderJavascriptInterface(
+			      downloadingMessage = getDownloadingMessageOrDefault(),
+			      requestFilePermission = base64DownloaderRequestFilePermission,
+		    )
+		    webView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+			      if (!webView.allowFileDownloads) {
+			      	  return@DownloadListener
+			      }
+			      if (url.startsWith("data:")) {
+			      	  Base64FileDownloader.downloadBase64File(
+			      	  	context = context,
+			      	  	base64 = url,
+			      	  	downloadingMessage = getDownloadingMessageOrDefault(),
+			      	  	requestFilePermission = base64DownloaderRequestFilePermission,
+			      	  )
+			      	  return@DownloadListener
+			      }
+			      if (url.startsWith("blob:")) {
+                webView.evaluateJavascriptWithFallback(BlobFileDownloader.getDownloadBlobInterceptor(url))
+			      	  return@DownloadListener
+			      }
             webView.setIgnoreErrFailedForThisURL(url)
-            val module = webView.themedReactContext.getNativeModule(RNCWebViewModule::class.java) ?: return@DownloadListener
+            val module = webView.reactApplicationContext.getNativeModule(RNCWebViewModule::class.java) ?: return@DownloadListener
             val request: DownloadManager.Request = try {
                 DownloadManager.Request(Uri.parse(url))
             } catch (e: IllegalArgumentException) {
@@ -118,10 +150,12 @@ class RNCWebViewManagerImpl {
             if (Bidi(fileName, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).isMixed) {
                 Toast.makeText(webView.context, "Invalid filename or type", Toast.LENGTH_LONG).show()
             } else {
-                val builder = AlertDialog.Builder(webView.context)
-                builder.setMessage("Do you want to download \n$fileName?")
-                builder.setCancelable(false)
-                builder.setPositiveButton("Download") { _, _ ->
+                TapjackingPreventionAlertDialog(
+                  context = webView.context,
+                  message = "Do you want to download \n$fileName?",
+                  positiveButtonText = "Download",
+                  negativeButtonText = "Cancel",
+                  onPositiveButtonClick = {
                     //Attempt to add cookie, if it exists
                     var urlObj: URL? = null
                     try {
@@ -150,10 +184,7 @@ class RNCWebViewManagerImpl {
                                 getDownloadingMessageOrDefault()
                         )
                     }
-                }
-                builder.setNegativeButton("Cancel") { _: DialogInterface?, _: Int -> }
-                val alertDialog = builder.create()
-                alertDialog.show()
+                }).show()
             }
         })
         return RNCWebViewWrapper(context, webView)
@@ -229,6 +260,7 @@ class RNCWebViewManagerImpl {
                 }
             webChromeClient.setAllowsProtectedMedia(mAllowsProtectedMedia);
             webChromeClient.setHasOnOpenWindowEvent(mHasOnOpenWindowEvent);
+            webChromeClient.setSuppressJavaScriptDialogs(webView.suppressJavaScriptDialogs);
             webView.webChromeClient = webChromeClient
         } else {
             var webChromeClient = webView.webChromeClient as RNCWebChromeClient?
@@ -240,6 +272,7 @@ class RNCWebViewManagerImpl {
             }
             webChromeClient.setAllowsProtectedMedia(mAllowsProtectedMedia);
             webChromeClient.setHasOnOpenWindowEvent(mHasOnOpenWindowEvent);
+            webChromeClient.setSuppressJavaScriptDialogs(webView.suppressJavaScriptDialogs);
             webView.webChromeClient = webChromeClient
         }
     }
@@ -287,6 +320,13 @@ class RNCWebViewManagerImpl {
             }
         }
         viewWrapper.webView.setBasicAuthCredential(basicAuthCredential)
+    }
+
+    fun onAfterUpdateTransaction(viewWrapper: RNCWebViewWrapper) {
+        mPendingSource?.let { source ->
+            loadSource(viewWrapper, source)
+        }
+        mPendingSource = null
     }
 
     fun onDropViewInstance(viewWrapper: RNCWebViewWrapper) {
@@ -354,11 +394,9 @@ class RNCWebViewManagerImpl {
         }
         "injectJavaScript" -> webView.evaluateJavascriptWithFallback(args.getString(0))
         "loadUrl" -> {
-          if (args == null) {
-            throw RuntimeException("Arguments for loading an url are null!")
-          }
+          val url = args?.getString(0) ?: throw RuntimeException("Arguments for loading an url are null!")
           webView.progressChangedFilter.setWaitingForCommandLoadUrl(false)
-          webView.loadUrl(args.getString(0))
+          webView.loadUrl(url)
         }
         "requestFocus" -> webView.requestFocus()
         "clearFormData" -> webView.clearFormData()
@@ -385,7 +423,7 @@ class RNCWebViewManagerImpl {
         viewWrapper.webView.settings.allowUniversalAccessFromFileURLs = allow
     }
 
-    private fun getDownloadingMessageOrDefault(): String? {
+    private fun getDownloadingMessageOrDefault(): String {
         return mDownloadingMessage ?: DEFAULT_DOWNLOADING_MESSAGE
     }
 
@@ -394,7 +432,11 @@ class RNCWebViewManagerImpl {
             ?: DEFAULT_LACK_PERMISSION_TO_DOWNLOAD_MESSAGE
     }
 
-    fun setSource(viewWrapper: RNCWebViewWrapper, source: ReadableMap?, newArch: Boolean = true) {
+    fun setSource(viewWrapper: RNCWebViewWrapper, source: ReadableMap?) {
+        mPendingSource = source
+    }
+
+    private fun loadSource(viewWrapper: RNCWebViewWrapper, source: ReadableMap?) {
         val view = viewWrapper.webView
         if (source != null) {
             if (source.hasKey("html")) {
@@ -638,6 +680,11 @@ class RNCWebViewManagerImpl {
         mLackPermissionToDownloadMessage = value
     }
 
+    fun setAllowFileDownloads(viewWrapper: RNCWebViewWrapper, value: Boolean) {
+        val view = viewWrapper.webView
+        view.allowFileDownloads = value
+    }
+
     fun setHasOnOpenWindowEvent(viewWrapper: RNCWebViewWrapper, value: Boolean) {
         val view = viewWrapper.webView
         mHasOnOpenWindowEvent = value
@@ -663,9 +710,21 @@ class RNCWebViewManagerImpl {
       }
     }
 
-    fun setMenuCustomItems(viewWrapper: RNCWebViewWrapper, value: ReadableArray) {
+    fun setSuppressJavaScriptDialogs(viewWrapper: RNCWebViewWrapper, suppress: Boolean) {
         val view = viewWrapper.webView
-        view.setMenuCustomItems(value.toArrayList() as List<Map<String, String>>)
+        view.suppressJavaScriptDialogs = suppress
+        val client = view.webChromeClient
+        if (client is RNCWebChromeClient) {
+            client.setSuppressJavaScriptDialogs(suppress)
+        }
+    }
+
+    fun setMenuCustomItems(viewWrapper: RNCWebViewWrapper, value: ReadableArray?) {
+        val view = viewWrapper.webView
+        when (value) {
+            null -> view.setMenuCustomItems(null)
+            else -> view.setMenuCustomItems(value.toArrayList() as List<Map<String, String>>)
+        }
     }
 
     fun setNestedScrollEnabled(viewWrapper: RNCWebViewWrapper, value: Boolean) {
@@ -722,5 +781,12 @@ class RNCWebViewManagerImpl {
 
     fun setWebviewDebuggingEnabled(viewWrapper: RNCWebViewWrapper, enabled: Boolean) {
         RNCWebView.setWebContentsDebuggingEnabled(enabled)
+    }
+
+    fun setPaymentRequestEnabled(viewWrapper: RNCWebViewWrapper, enabled: Boolean) {
+        val view = viewWrapper.webView
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.PAYMENT_REQUEST)) {
+            WebSettingsCompat.setPaymentRequestEnabled(view.settings, enabled)
+        }
     }
 }

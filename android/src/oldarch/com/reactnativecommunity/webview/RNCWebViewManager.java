@@ -41,8 +41,8 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
         return mRNCWebViewManagerImpl.createViewInstance(context);
     }
 
-    public RNCWebViewWrapper createViewInstance(ThemedReactContext context, RNCWebViewWrapper view) {
-      return mRNCWebViewManagerImpl.createViewInstance(context, view.getWebView());
+    public RNCWebViewWrapper createViewInstance(ThemedReactContext context, RNCWebView view) {
+      return mRNCWebViewManagerImpl.createViewInstance(context, view);
     }
 
     @ReactProp(name = "allowFileAccess")
@@ -168,9 +168,19 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
         mRNCWebViewManagerImpl.setLackPermissionToDownloadMessage(value);
     }
 
+    @ReactProp(name = "allowFileDownloads", defaultBoolean = true)
+    public void setAllowFileDownloads(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setAllowFileDownloads(view, value);
+    }
+
     @ReactProp(name = "hasOnOpenWindowEvent")
     public void setHasOnOpenWindowEvent(RNCWebViewWrapper view, boolean hasEvent) {
         mRNCWebViewManagerImpl.setHasOnOpenWindowEvent(view, hasEvent);
+    }
+
+    @ReactProp(name = "suppressJavaScriptDialogs")
+    public void setSuppressJavaScriptDialogs(RNCWebViewWrapper view, boolean suppress) {
+        mRNCWebViewManagerImpl.setSuppressJavaScriptDialogs(view, suppress);
     }
 
     @ReactProp(name = "mediaPlaybackRequiresUserAction")
@@ -250,7 +260,7 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
 
     @ReactProp(name = "source")
     public void setSource(RNCWebViewWrapper view, @Nullable ReadableMap value) {
-        mRNCWebViewManagerImpl.setSource(view, value, false);
+        mRNCWebViewManagerImpl.setSource(view, value);
     }
 
     @ReactProp(name = "textZoom")
@@ -271,6 +281,11 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
     @ReactProp(name = "userAgent")
     public void setUserAgent(RNCWebViewWrapper view, @Nullable String value) {
         mRNCWebViewManagerImpl.setUserAgent(view, value);
+    }
+
+    @ReactProp(name = "paymentRequestEnabled")
+    public void setPaymentRequestEnabled(RNCWebViewWrapper view, boolean value) {
+        mRNCWebViewManagerImpl.setPaymentRequestEnabled(view, value);
     }
 
     @Override
@@ -312,6 +327,12 @@ public class RNCWebViewManager extends ViewGroupManager<RNCWebViewWrapper> {
     public void receiveCommand(@NonNull RNCWebViewWrapper reactWebView, String commandId, @Nullable ReadableArray args) {
         mRNCWebViewManagerImpl.receiveCommand(reactWebView, commandId, args);
         super.receiveCommand(reactWebView, commandId, args);
+    }
+
+    @Override
+    protected void onAfterUpdateTransaction(@NonNull RNCWebViewWrapper view) {
+        super.onAfterUpdateTransaction(view);
+        mRNCWebViewManagerImpl.onAfterUpdateTransaction(view);
     }
 
     @Override
