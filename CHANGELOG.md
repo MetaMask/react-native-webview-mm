@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [14.8.0]
+
+### Fixed
+
+- fix: serialize URLs used in native download JavaScript ([#79](https://github.com/MetaMask/react-native-webview-mm/pull/79))
+
 ## [14.7.0]
 
 ### Added
@@ -79,13 +85,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bump ws from 6.2.2 to 6.2.3 in the npm_and_yarn group across 1 directory (https://github.com/MetaMask/react-native-webview-mm/pull/35)
 - sync with upstream v13.13.5 (https://github.com/MetaMask/react-native-webview-mm/pull/47)
 
-[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.7.0...main
+[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.0...HEAD
+[14.8.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.7.0...v14.8.0
 [14.7.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.6.0...v14.7.0
-[14.6.0]: https://github.com/MetaMask/react-native-webview-mm/compare/7872dfe...v14.6.0
-[14.5.0]: https://github.com/MetaMask/react-native-webview-mm/compare/d93893d...7872dfe
-[14.4.0]: https://github.com/MetaMask/react-native-webview-mm/compare/bfdef1a...d93893d
-[14.3.0]: https://github.com/MetaMask/react-native-webview-mm/compare/6925354...bfdef1a
-[14.2.2]: https://github.com/MetaMask/react-native-webview-mm/compare/3be76c0...6925354
-[14.2.1]: https://github.com/MetaMask/react-native-webview-mm/compare/release/14.2.0...MetaMask:react-native-webview-mm:release/14.2.1
-[14.2.0]: https://github.com/MetaMask/react-native-webview-mm/compare/release/14.1.0...MetaMask:react-native-webview-mm:release/14.2.0
-[14.1.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.0.4...v14.1.0
+[14.6.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.5.0...v14.6.0
+[14.5.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.4.0...v14.5.0
+[14.4.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.3.0...v14.4.0
+[14.3.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.2.2...v14.3.0
+[14.2.2]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.2.1...v14.2.2
+[14.2.1]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.2.0...v14.2.1
+[14.2.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.1.0...v14.2.0
+[14.1.0]: https://github.com/MetaMask/react-native-webview-mm/releases/tag/v14.1.0
