@@ -4,6 +4,7 @@ import android.webkit.JavascriptInterface
 import com.reactnativecommunity.webview.RNCWebView
 import com.reactnativecommunity.webview.extension.file.Base64FileDownloader.downloadBase64File
 import java.io.IOException
+import org.json.JSONObject
 
 internal fun RNCWebView.addBlobFileDownloaderJavascriptInterface(downloadingMessage: String, requestFilePermission: (String) -> Unit) {
 	this.addJavascriptInterface(
@@ -33,7 +34,8 @@ internal class BlobFileDownloader(
     /**
      * Invokes JS method downloadBlob from [getBlobFileInterceptor]
      */
-    fun getDownloadBlobInterceptor(url: String): String = "downloadBlob('$url');"
+    fun getDownloadBlobInterceptor(url: String): String =
+        "downloadBlob(${JSONObject.quote(url)});"
 
     /**
      * This script handles Blob downloading in two ways:
