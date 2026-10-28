@@ -100,6 +100,9 @@
       "javaPackageName": "com.reactnativecommunity.webview"
     }
   },
+  "resolutions": {
+    "yargs@npm:17.7.2": "17.7.3"
+  },
   "packageManager": "yarn@4.16.0+sha256.ba05224324578801b9cc98170d64aa50b9a36733b440fb0942306da3fbbdc7d1",
   "publishConfig": {
     "access": "public",
