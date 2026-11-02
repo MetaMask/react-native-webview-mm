@@ -46,7 +46,7 @@
     "@babel/core": "^7.20.0",
     "@babel/runtime": "^7.20.0",
     "@callstack/react-native-visionos": "0.73.8",
-    "@lavamoat/allow-scripts": "^3.0.4",
+    "@lavamoat/allow-scripts": "5.1.0",
     "@lavamoat/preinstall-always-fail": "^2.1.0",
     "@react-native/babel-preset": "0.73.21",
     "@react-native/eslint-config": "0.73.2",
