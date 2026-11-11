@@ -725,7 +725,7 @@ canGoForward
 lockIdentifier
 mainDocumentURL (solo iOS)
 navigationType (solo iOS)
-isTopFrame (solo iOS)
+isTopFrame
 ```
 
 ---
