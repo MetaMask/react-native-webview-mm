@@ -109,6 +109,10 @@ public class RNCWebViewClient extends WebViewClient {
 
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, String url) {
+        return this.shouldOverrideUrlLoading(view, url, true);
+    }
+
+    private boolean shouldOverrideUrlLoading(WebView view, String url, boolean isTopFrame) {
         final RNCWebView rncWebView = (RNCWebView) view;
 
         RNCWebChromeClient webChromeClient = (RNCWebChromeClient) rncWebView.getWebChromeClient();
@@ -125,6 +129,7 @@ public class RNCWebViewClient extends WebViewClient {
 
             final WritableMap event = createWebViewEvent(view, url);
             event.putDouble("lockIdentifier", lockIdentifier);
+            event.putBoolean("isTopFrame", isTopFrame);
             rncWebView.dispatchDirectShouldStartLoadWithRequest(event);
 
             try {
@@ -158,11 +163,13 @@ public class RNCWebViewClient extends WebViewClient {
                     "Couldn't use blocking synchronous call for onShouldStartLoadWithRequest due to debugging or missing Catalyst instance, falling back to old event-and-load.");
             progressChangedFilter.setWaitingForCommandLoadUrl(true);
 
+            final WritableMap event = createWebViewEvent(view, url);
+            event.putBoolean("isTopFrame", isTopFrame);
             int reactTag = RNCWebViewWrapper.getReactTagFromWebView(view);
             UIManagerHelper.getEventDispatcherForReactTag((ReactContext) view.getContext(), reactTag)
                     .dispatchEvent(new TopShouldStartLoadWithRequestEvent(
                             reactTag,
-                            createWebViewEvent(view, url)));
+                            event));
             return true;
         }
     }
@@ -171,7 +178,7 @@ public class RNCWebViewClient extends WebViewClient {
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         final String url = request.getUrl().toString();
-        return this.shouldOverrideUrlLoading(view, url);
+        return this.shouldOverrideUrlLoading(view, url, request.isForMainFrame());
     }
 
     @Override
