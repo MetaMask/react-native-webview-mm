@@ -1,10 +1,7 @@
 package com.reactnativecommunity.webview;
 
-import static android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
-
 import android.annotation.SuppressLint;
 import android.graphics.Rect;
-import android.os.Build;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.view.ActionMode;
@@ -12,7 +9,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.webkit.JavascriptInterface;
@@ -84,11 +80,6 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
     protected boolean allowFileDownloads = true;
     protected boolean suppressJavaScriptDialogs = false;
 
-    /** Samsung Manufacturer Name */
-    private static final String SAMSUNG_MANUFACTURER_NAME = "samsung";
-    /** Samsung Device Check */
-    private static final Boolean IS_SAMSUNG_DEVICE = Build.MANUFACTURER.equals(SAMSUNG_MANUFACTURER_NAME);
-
     /**
      * WebView must be created with an context of the current activity
      * <p>
@@ -141,20 +132,9 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-        InputConnection inputConnection;
-
-        if (IS_SAMSUNG_DEVICE) {
-            inputConnection = super.onCreateInputConnection(outAttrs);
-        } else {
-            inputConnection = new BaseInputConnection(this, false);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
-            } else {
-                // Cover OS versions below Oreo
-                outAttrs.imeOptions = IME_FLAG_NO_PERSONALIZED_LEARNING;
-            }
-        }
+        // Keep Chromium's input connection: replacing it breaks IME composition (CJK input, language switching).
+        InputConnection inputConnection = super.onCreateInputConnection(outAttrs);
+        outAttrs.imeOptions |= EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
         return inputConnection;
     }
 
