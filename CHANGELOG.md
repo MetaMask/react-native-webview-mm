@@ -7,15 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [14.8.0]
+## [14.8.1]
 
 ### Fixed
 
-- fix: serialize URLs used in native download JavaScript ([#79](https://github.com/MetaMask/react-native-webview-mm/pull/79))
+- fix(android): report isTopFrame in onShouldStartLoadWithRequest ([#88](https://github.com/MetaMask/react-native-webview-mm/pull/88))
+
+## [14.8.0]
 
 ### Added
 
 - add `additionalMessageHandlerNames` prop (iOS) to register extra native script message handlers that forward to `onMessage`, including in Apple Pay mode
+
+### Fixed
+
+- fix: serialize URLs used in native download JavaScript ([#79](https://github.com/MetaMask/react-native-webview-mm/pull/79))
 
 ## [14.7.0]
 
@@ -89,7 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bump ws from 6.2.2 to 6.2.3 in the npm_and_yarn group across 1 directory (https://github.com/MetaMask/react-native-webview-mm/pull/35)
 - sync with upstream v13.13.5 (https://github.com/MetaMask/react-native-webview-mm/pull/47)
 
-[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.0...HEAD
+[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.1...HEAD
+[14.8.1]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.0...v14.8.1
 [14.8.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.7.0...v14.8.0
 [14.7.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.6.0...v14.7.0
 [14.6.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.5.0...v14.6.0
