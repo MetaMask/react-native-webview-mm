@@ -100,6 +100,10 @@ export interface WebViewNavigation extends WebViewNativeEvent {
 
 export interface ShouldStartLoadRequest extends WebViewNavigation {
   isTopFrame: boolean;
+  /**
+   * `isSourceTopFrame` is only used on iOS and macOS
+   */
+  isSourceTopFrame?: boolean;
 }
 
 export interface FileDownload {
@@ -132,6 +136,10 @@ export interface WebViewRenderProcessGoneDetail {
 
 export interface WebViewOpenWindow {
   targetUrl: string;
+  /**
+   * `isSourceTopFrame` is only used on iOS and macOS
+   */
+  isSourceTopFrame?: boolean;
 }
 
 export type WebViewEvent = NativeSyntheticEvent<WebViewNativeEvent>;
