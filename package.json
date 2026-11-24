@@ -78,7 +78,7 @@
     "url": "https://github.com/MetaMask/react-native-webview-mm.git"
   },
   "files": [
-    "android/src",
+    "android/src/**",
     "android/build.gradle",
     "android/gradle.properties",
     "apple",
@@ -98,6 +98,14 @@
     "jsSrcsDir": "./src",
     "android": {
       "javaPackageName": "com.reactnativecommunity.webview"
+    },
+    "ios": {
+      "componentProvider": {
+        "RNCWebView": "RNCWebView"
+      },
+      "modulesProvider": {
+        "RNCWebViewModule": "RNCWebViewModule"
+      }
     }
   },
   "packageManager": "yarn@4.16.0+sha256.ba05224324578801b9cc98170d64aa50b9a36733b440fb0942306da3fbbdc7d1",
