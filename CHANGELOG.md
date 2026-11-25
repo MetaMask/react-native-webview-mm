@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [14.8.2]
+
+### Fixed
+
+- fix: publish Android sources and iOS codegen providers ([#92](https://github.com/MetaMask/react-native-webview-mm/pull/92))
+
 ## [14.8.1]
 
 ### Fixed
@@ -95,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bump ws from 6.2.2 to 6.2.3 in the npm_and_yarn group across 1 directory (https://github.com/MetaMask/react-native-webview-mm/pull/35)
 - sync with upstream v13.13.5 (https://github.com/MetaMask/react-native-webview-mm/pull/47)
 
-[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.1...HEAD
+[Unreleased]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.2...HEAD
+[14.8.2]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.1...v14.8.2
 [14.8.1]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.8.0...v14.8.1
 [14.8.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.7.0...v14.8.0
 [14.7.0]: https://github.com/MetaMask/react-native-webview-mm/compare/v14.6.0...v14.7.0
