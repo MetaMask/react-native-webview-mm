@@ -416,7 +416,10 @@ RCTAutoInsetsProtocol>
 
     if (_onOpenWindow) {
       NSMutableDictionary<NSString *, id> *event = [self baseEvent];
-      [event addEntriesFromDictionary: @{@"targetUrl": url.absoluteString}];
+      [event addEntriesFromDictionary: @{
+        @"targetUrl": url.absoluteString,
+        @"isSourceTopFrame": @(navigationAction.sourceFrame.isMainFrame)
+      }];
       _onOpenWindow(event);
     } else {
       [webView loadRequest:navigationAction.request];
@@ -1508,6 +1511,8 @@ RCTAutoInsetsProtocol>
     WKNavigationType navigationType = navigationAction.navigationType;
     NSURLRequest *request = navigationAction.request;
     BOOL isTopFrame = [request.URL isEqual:request.mainDocumentURL];
+    // sourceFrame can be nil when the navigation was not started by web content
+    BOOL isSourceTopFrame = navigationAction.sourceFrame.isMainFrame;
     BOOL hasTargetFrame = navigationAction.targetFrame != nil;
 
     if (_onOpenWindow && !hasTargetFrame) {
@@ -1518,7 +1523,10 @@ RCTAutoInsetsProtocol>
       // By preventing the navigation here, we also prevent the WebView's ref mutation
       // The counterpart is that we have to manually call `_onOpenWindow` here, because no navigation means no call to `createWebViewWithConfiguration`
       NSMutableDictionary<NSString *, id> *event = [self baseEvent];
-      [event addEntriesFromDictionary: @{@"targetUrl": request.URL.absoluteString}];
+      [event addEntriesFromDictionary: @{
+        @"targetUrl": request.URL.absoluteString,
+        @"isSourceTopFrame": @(isSourceTopFrame)
+      }];
       decisionHandler(WKNavigationActionPolicyCancel);
       _onOpenWindow(event);
       return;
@@ -1571,6 +1579,7 @@ RCTAutoInsetsProtocol>
             @"url": (request.URL).absoluteString,
             @"navigationType": navigationTypes[@(navigationType)],
             @"isTopFrame": @(isTopFrame),
+            @"isSourceTopFrame": @(isSourceTopFrame),
             @"hasTargetFrame": @(hasTargetFrame),
             @"lockIdentifier": @(lockIdentifier)
         }];

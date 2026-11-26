@@ -651,7 +651,10 @@ Function passed to onOpenWindow is called with a SyntheticEvent wrapping a nativ
 
 ```
 targetUrl
+isSourceTopFrame (iOS and macOS only)
 ```
+
+The `isSourceTopFrame` prop is a boolean that is `true` when the new window was requested by the top frame, and `false` when an iframe requested it.
 
 ---
 
@@ -831,8 +834,13 @@ lockIdentifier
 mainDocumentURL (iOS only)
 navigationType (iOS only)
 isTopFrame
+isSourceTopFrame (iOS and macOS only)
 hasTargetFrame (iOS only)
 ```
+
+The `isTopFrame` prop is a boolean that is `true` when the navigation targets the top frame. It does not say which frame started the navigation: an iframe that navigates `window.top` also reports `true`.
+
+The `isSourceTopFrame` prop is a boolean that is `true` when the navigation was started by the top frame ([more info](https://developer.apple.com/documentation/webkit/wknavigationaction/sourceframe)). It is `false` when an iframe started the navigation, including an iframe that navigates `window.top`. Navigations that were not started by web content, such as the app changing `source`, can report either value.
 
 The `hasTargetFrame` prop is a boolean that is `false` when the navigation targets a new window or tab, otherwise it should be `true` ([more info](https://developer.apple.com/documentation/webkit/wknavigationaction/1401918-targetframe)). Note that this prop should always be `true` when `onOpenWindow` event is registered on the WebView because the `false` case is intercepted by this event.
 

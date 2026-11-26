@@ -85,6 +85,7 @@ auto stringToOnLoadingFinishNavigationTypeEnum(std::string value) {
                     .canGoBack = static_cast<bool>([[dictionary valueForKey:@"canGoBack"] boolValue]),
                     .canGoForward = static_cast<bool>([[dictionary valueForKey:@"canGoForward"] boolValue]),
                     .isTopFrame = static_cast<bool>([[dictionary valueForKey:@"isTopFrame"] boolValue]),
+                    .isSourceTopFrame = static_cast<bool>([[dictionary valueForKey:@"isSourceTopFrame"] boolValue]),
                     .loading = static_cast<bool>([[dictionary valueForKey:@"loading"] boolValue]),
                     .mainDocumentURL = std::string([[dictionary valueForKey:@"mainDocumentURL"] UTF8String])
                 };
@@ -432,7 +433,8 @@ auto stringToOnLoadingFinishNavigationTypeEnum(std::string value) {
                 if (_eventEmitter) {
                     auto webViewEventEmitter = std::static_pointer_cast<RNCWebViewEventEmitter const>(_eventEmitter);
                     facebook::react::RNCWebViewEventEmitter::OnOpenWindow data = {
-                        .targetUrl = std::string([[dictionary valueForKey:@"targetUrl"] UTF8String])
+                        .targetUrl = std::string([[dictionary valueForKey:@"targetUrl"] UTF8String]),
+                        .isSourceTopFrame = static_cast<bool>([[dictionary valueForKey:@"isSourceTopFrame"] boolValue])
                     };
                     webViewEventEmitter->onOpenWindow(data);
                 }

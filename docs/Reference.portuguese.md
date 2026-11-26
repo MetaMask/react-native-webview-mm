@@ -744,6 +744,7 @@ lockIdentifier
 mainDocumentURL (iOS only)
 navigationType (iOS only)
 isTopFrame
+isSourceTopFrame (iOS and macOS only)
 ```
 
 ---

@@ -32,6 +32,7 @@ export type WebViewMessageEvent = Readonly<{
 }>;
 export type WebViewOpenWindowEvent = Readonly<{
   targetUrl: string;
+  isSourceTopFrame?: boolean;
 }>;
 export type WebViewHttpErrorEvent = Readonly<{
   url: string;
@@ -99,6 +100,7 @@ export type ShouldStartLoadRequestEvent = Readonly<{
     | 'other';
   mainDocumentURL?: string;
   isTopFrame: boolean;
+  isSourceTopFrame?: boolean;
 }>;
 
 type ScrollEvent = Readonly<{
